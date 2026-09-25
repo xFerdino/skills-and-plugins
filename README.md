@@ -6,9 +6,12 @@ Claude Code skills and plugins, kept under version control.
 |---|---|
 | [`vocacards-app-tester`](skills/vocacards-app-tester/SKILL.md) | QA for the VocaCards app: change review, bug hunts, on-device verification, release audits |
 
-Install a skill by copying its folder into the project's `.claude/skills/` (project-only)
-or `~/.claude/skills/` (every project), e.g.:
+Install everything globally for Claude Code (`~/.claude/skills`) and Codex
+(`~/.codex/skills`) by junctioning each skill to this clone:
 
-```bash
-cp -r skills/vocacards-app-tester "C:/Users/Luk/Saved Games/vocacards_mob/.claude/skills/"
+```powershell
+.\install.ps1
 ```
+
+`git pull` then updates the installed skills in place. Re-run the script after adding a
+skill; restart Claude Code / Codex to pick up a new one.
