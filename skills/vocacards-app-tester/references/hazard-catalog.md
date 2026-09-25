@@ -96,6 +96,12 @@ Map each changed path to the sections to walk. A path can hit several.
   by `(source_apkg, config_hash)`, so each deck gets its own. *Look for:* dedupe by
   `config_hash` alone, which merges two decks that legitimately share one. *Recorded:*
   memory global-preset-no-config-hash; CLAUDE.md on the preset `UNIQUE` failure.
+- **Import unreachable once the user has cards. KNOWN OPEN (found 2026-09-25).** The
+  only navigation to `/import` is `EmptyFlowView.tsx` ("Get started"), which unmounts
+  after the first card. `import.tsx` honours `?uri=` only under `__DEV__`, and `app.json`
+  declares no `.apkg` intent filter. Onboarding copy nonetheless promises "Import as many
+  decks as you like". In device tests, use `pm clear` for the first import, and the
+  dev-client link `vocacards-dev:///import?uri=…&autoImport=1` for later ones.
 
 ## §2 Anki field edit modes
 

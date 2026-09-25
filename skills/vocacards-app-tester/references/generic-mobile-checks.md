@@ -65,6 +65,9 @@ takes precedence.
   tokens belong in `expo-secure-store`.
 - Dates: day rollover hour, timezone (`@date-fns/tz`), DST transitions, "today" computed
   in one place (`dayBoundary`). Check any `new Date()` arithmetic done by hand.
+- Reachability: is every feature reachable once the user has data? An entry point that
+  lives only in an empty-state view disappears after first use. Found for `/import`
+  on 2026-09-25: its only entry is `EmptyFlowView`, and its `?uri=` link is `__DEV__`-only.
 
 ## Platform
 

@@ -127,6 +127,16 @@ read-only checks below and prints what it finds.
   the wrong deck.
 - **Destructive steps** (deck delete, wipe, restore, sign-out) only on a device the task
   marks disposable. Announce each one first.
+- **Harness lessons from the 2026-09-25 Codex run.** Each of these was caught only by a
+  control:
+  - *Calling bash from PowerShell.* PowerShell expanded `$?` inside a double-quoted
+    `bash -c "…; echo $?"` before bash saw it, so `fg` looked like it always returned 0.
+    Read `$LASTEXITCODE` after `& bash …` instead.
+  - *A dead-looking button.* Tap a sibling control at the same y. If that also does
+    nothing, your coordinates are wrong, not the button.
+  - *A black screenshot* means the screen is asleep. It's not a rendering bug.
+  - *Failed settings writes.* A `settings put` that prints an error was not applied.
+    Read every restored value back, because the first restore pass silently failed one.
 
 ## 5. Gestures
 
