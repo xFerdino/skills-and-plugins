@@ -1,6 +1,6 @@
 # Full device test plan (mode E: campaign)
 
-A complete on-device QA campaign for VocaCards, split into about 130 test cases with IDs.
+A complete on-device QA campaign for VocaCards, split into about 150 test cases with IDs.
 Use it when the owner asks for "everything" on a test device. It runs across **as many
 agent sessions as it takes**, held together by a ledger. It's written for one Android test
 phone that has both the Play-installed release app and the dev client.
