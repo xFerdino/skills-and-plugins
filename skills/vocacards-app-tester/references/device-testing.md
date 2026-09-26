@@ -16,6 +16,8 @@ can read the full story.
 8. Visual and feel checks
 9. Performance measurement
 10. Known non-bugs
+    10b. Driving system UI (file picker, clock, reminders)
+    10c. Billing tests (Play license tester)
 11. Builds and installs
 12. E2E guard
 
@@ -74,10 +76,19 @@ read-only checks below and prints what it finds.
     `/data/local/tmp`). Without it the path is rewritten to a Windows path and silently
     misses.
 - **A worktree can't run the app until you set it up** (memory:
-  worktree-needs-node-modules-and-env). Junction `node_modules` to the main checkout and
-  copy `.env` and `.env.local`, then **always start Metro with `--clear`**. The junction
-  shares Metro's transform cache, so a plain start can serve another worktree's code as a
-  normal-looking bundle.
+  worktree-needs-node-modules-and-env). It needs `node_modules` plus copies of `.env` and
+  `.env.local`. Then **always start Metro with `--clear`**.
+  - **For a QA worktree you create yourself, run `npm ci --offline` inside it.** The npm
+    cache holds every package, so it doesn't touch the network.
+  - **Don't junction `node_modules` into a throwaway tree.** On 2026-09-26,
+    `git worktree remove --force` followed such a junction and deleted about 190 packages
+    from the shared checkout (575 → 382 entries).
+  - Any recursive delete (`Remove-Item -Recurse`, `rm -rf`, `rmdir /s`) can do the same.
+    If a junction exists, remove it first with `cmd /c rmdir <link>` (without `/s`, which
+    deletes only the link). Then confirm that `cmd /c dir /AL /S /B <tree>` lists nothing
+    before deleting the tree.
+  - A shared junction also shares Metro's transform cache, so a plain start can serve
+    another worktree's code as a normal-looking bundle.
 - **Metro binding.** Never use `--localhost`: on this host it binds IPv6-only and
   `adb reverse` gets nothing. Use the `expo` launch config or `--host lan`, then
   `adb reverse tcp:<port> tcp:<port>` (re-assert it after relaunches, because it drops).
@@ -94,6 +105,12 @@ read-only checks below and prints what it finds.
   the watcher saw it. A curl of the bundle proves nothing, because the curl itself
   triggers a rebuild. If it's stale: `--clear`, force-stop, cold relaunch, then wait for
   the full multi-thousand-module `Bundled` line.
+- **Which server did the device actually load?** The dev launcher reconnects to the last
+  server it used, and a peer's Metro on 8081 won one campaign. It also keeps a ~20 MB
+  cached bundle (`files/DevLauncherApp-*DevBundle.js`) that runs with no server at all.
+  Launch with your explicit URL, then confirm that **your** Metro's log shows a bundle
+  request arriving right after the launch. A healthy server is not proof the device used
+  it.
 - **`/status` 200 isn't health.** A long-running Metro can answer it while the device
   goes black. An old Metro can also stop spawning children (0xC0000142), which looks like
   a laggy app. If runs behave oddly, restart Metro and reboot the device **before** you
@@ -127,6 +144,12 @@ read-only checks below and prints what it finds.
   the wrong deck.
 - **Destructive steps** (deck delete, wipe, restore, sign-out) only on a device the task
   marks disposable. Announce each one first.
+- **`/data/local/tmp` is shared with other sessions' experiments.** Push everything into
+  your own `/data/local/tmp/qa-<date>/`, and clean up by deleting only that folder. Never
+  glob-delete `/data/local/tmp`: one campaign deleted two older files it hadn't created.
+- **Random-tap stress (monkey) runs signed out, with evidence.** Screenshot the
+  signed-out state before each seed. Signed in, monkey can reach sign-out, account
+  deletion and purchases. If you can't get signed out, don't run it.
 - **Harness lessons from the 2026-09-25 Codex run.** Each of these was caught only by a
   control:
   - *Calling bash from PowerShell.* PowerShell expanded `$?` inside a double-quoted
@@ -186,6 +209,19 @@ Memory: adb-gesture-testing-motionevent.
   exist only under `__DEV__`, brightness tests fail on a dark theme, and the Android home
   screen passes a "bright band" test. Run a negative control (app stopped) and a positive
   control (app up) before trusting any gate (test-validity-rules register).
+- **Zero-size nodes aren't evidence.** `enabled`, `selected` and `checked` read from a
+  uiautomator node whose bounds are `[0,0][0,0]` are unreliable; the editor's Save and
+  Cancel were such nodes. Judge the control by what tapping it does (a DB row or a visible
+  change). Take the tap coordinates from a visible sibling, not from the node.
+- **The dev client's DB can wedge.** After reloads it can hit `DB init failed … database
+  is locked`, and writes may then hang silently. Before any write test on the dev client,
+  force-stop it, relaunch, and prove one write lands (a DB count). Once a lock has been
+  seen, treat any write-path failure as SUSPECT until you reproduce it on the release app.
+  A "the editor cannot save" verdict came from exactly this state.
+- **Dev-client-only failures cap at PLAUSIBLE.** The dev client runs a native shell that
+  may be older than master, a JS bundle from whichever server it reached, and a DB that
+  wedges. Before rating a failure High or above, reproduce it on the release app, or show
+  the mechanism in code.
 
 ## 7. Accessibility checks
 
@@ -247,6 +283,53 @@ Don't chase these as app defects:
 - `Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` means the worktree has no `.env`.
 - A `ClassNotFound MainApplication` at launch is a corrupt dex or poisoned `.cxx`: wipe
   the caches and rebuild arm64-only (memory: devclient-corrupt-build-recovery).
+- **"expo-auth-session and expo-web-browser are required for SSO" on the dev client is
+  misleading.**
+  - `@clerk/expo`'s `useSSO` wraps the require in a bare `catch {}` that always prints
+    this message, whatever actually threw.
+  - `expo-auth-session` itself is pure JS, so it never appears in an APK.
+  - The 2026-09-20 dev APK does contain every native module it needs: ExpoCrypto,
+    ExpoCryptoAES, ExpoLinking, ExpoWebBrowser (checked in the dex).
+  - The real cause is unknown. Diagnose it in React Native DevTools with "pause on caught
+    exceptions". Meanwhile, run signed-in tests on the release app, which signs in fine.
+- On the dev client, the dev-menu gear overlaps the Flow's "Filter decks" control, so a tap
+  there opens the dev menu. Run filter tests on the release app.
+
+## 10b. Driving system UI
+
+- **The file picker (Android DocumentsUI) ignores taps on file rows.** One campaign lost
+  every restore and import test to this. Try these in order and record which worked:
+  1. Look for overlay windows. The picker may drop touches while something draws over
+     it. Check with `adb shell dumpsys window windows | grep -i -E "overlay|Window #"`.
+     Stop `screenrecord`, turn off "Show taps" and "Pointer location", and close floating
+     bubbles.
+  2. Tap with an explicit `input motionevent DOWN x y; … UP x y` in one shell call.
+  3. Use the keyboard: `input keyevent 61` (TAB) or `20` (DPAD_DOWN) to focus the row,
+     then `66` (ENTER).
+  4. Use the picker's search to narrow the list to the one file, then ENTER.
+  5. For imports on the dev client only, skip the picker: copy the file into the app's
+     own `cache/` with `run-as`, then use the `/import?uri=…&autoImport=1` deep link.
+     Try both `vocacards-dev:///import?…` and `vocacards-dev://import?…`, because one
+     campaign saw the Add screen open instead.
+- **Moving the clock without root.** `adb shell date` and `su` fail on retail MIUI. Use
+  Settings → Additional settings → Date & time: turn off automatic time, then set the
+  date. Verify with `adb shell date`. Turn automatic time back on at the end, and read it
+  back.
+- **Reminders without time travel.** Set the reminder time 2–3 minutes ahead, background
+  or kill the app, and wait.
+
+## 10c. Billing tests (Play license tester)
+
+- **Test subscriptions run on an accelerated clock.** The purchase sheet shows the
+  period, for example "27,99 zł/5 min". They renew only a few times, then lapse on their
+  own. Record the purchase time, and judge any "Pro disappeared" against that clock and
+  against Play Store → Payments & subscriptions before calling it an app bug. A
+  "sign-out loses Pro" finding was really a lapsed test subscription.
+- **The sheet shows one test card by default.** Tap the payment-method row to list the
+  others (always declines, slow approve, slow decline). Only report "no decline card"
+  after that list is open.
+- **Account deletion ends the test account.** Later purchase tests need a fresh sign-in,
+  which on this app creates a new account.
 
 ## 11. Builds and installs
 

@@ -48,7 +48,9 @@ Modes combine. A review of a gesture fix is A, then C.
    source, stash, or check out. Fixing mid-sweep stops the sweep, so the rest of the
    diff never gets read. This working tree is also shared with other live sessions
    (memory: concurrent-sessions-share-worktree). Probes and scratch files go in the
-   scratchpad.
+   scratchpad. This applies to throwaway worktrees too: editing a tracked file there to
+   "just try something" is still a code change. Write the experiment up as a proposal
+   instead.
 2. **Evidence or it didn't happen.** Every finding carries `path:line`, the actual lines
    (read in this session, not recalled), the trigger scenario, and what the user would
    see. Runtime claims need observed output: a log line, a DB row, a screenshot. "I
@@ -106,6 +108,12 @@ Confidence is separate from severity:
   (memory: instrument-readable-before-interpreting).
 - **PLAUSIBLE**: the mechanism is read and holds, but the trigger hasn't been run.
 - **SUSPECT**: worth a look, with the reason you couldn't settle it.
+
+A failure seen only on the **dev client** is at most PLAUSIBLE until it's reproduced on
+the release app, or its mechanism is shown in code. The dev client can run an older
+native shell, a bundle from someone else's server, or a wedged DB
+(`references/device-testing.md` §6). A test harness can also fake a failure. Before
+calling a control dead, check it against a sibling control.
 
 Before reporting a PLAUSIBLE finding, try to promote it cheaply: a `tsx` probe, a unit
 test, a query against a pulled or fixture DB (`e2e/fixtures/vocacards.db`), or

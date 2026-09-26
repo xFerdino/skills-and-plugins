@@ -51,17 +51,35 @@ listed UI oracle. Downgrade only to what the evidence supports.
 **Evidence.** Every row cites a file in `shots/`, `dumps/`, `db/`, `logs/` or `perf/`. DB
 assertions are written as a query plus its before and after output, saved as `db/<ID>.txt`.
 
+**Lessons from the second campaign (2026-09-25/26).** It ran 10 hours with 0 TODO, but
+two headline findings didn't survive review:
+- **A blocker on one build isn't a blocker for the test.** 19 rows were BLOCKED because
+  the dev client couldn't sign in, while the release app could. Run every signed-in, Power
+  mode, cloud backup and purchase test on the release app. Only AC4 (two-device sync)
+  needs both apps signed in.
+- **Failures seen only on the dev client cap at PLAUSIBLE** until reproduced on the
+  release app (SKILL.md §3). "The editor cannot save" was measured only on a dev client
+  that had hit `database is locked`, and through a Save node with zero-size bounds.
+- **Before calling a blocker external, try the documented workarounds**
+  (`device-testing.md` §10b for the file picker, the clock and reminders; §10c for
+  billing).
+- **The report must match the ledger.** When a row is corrected (as U3 was, for "which
+  Metro served the bundle"), update every report line that depended on it.
+- **No tracked-file edits, even in the throwaway worktree.** Throwaway worktrees get
+  their own `npm ci --offline`, never a junction; a junction is how the shared
+  `node_modules` was destroyed.
+
 ## 2. Unblockers (run first, in order)
 
 | ID | Goal | How | Done when |
 |---|---|---|---|
 | U1 | fg check trustworthy | Run `device.sh fg` against the app in front (expect exit 0) and after pressing HOME (expect exit 1). From PowerShell, read `$LASTEXITCODE` after `& bash …`, and never embed `$?` in a double-quoted string: PowerShell expands it first. | both controls behave |
 | U2 | Debuggable dev client `cards.voca.app.dev` installed | 1) Look for an existing APK: `Get-ChildItem C:\tmp -Recurse -Filter *.apk` and check with `aapt dump badging` that the package is `cards.voca.app.dev`. 2) Otherwise build with `eas build --profile development-variant --platform android` and install the APK. This profile builds the dev client with `APP_VARIANT=development`. 3) Or build locally from a short path per `docs/android-build.md`. It installs alongside the release app, with a different package and no signature conflict. | `pm list packages` shows it, and `run-as cards.voca.app.dev true` succeeds |
-| U3 | The dev client serves this tree | Start Metro from the throwaway master worktree on its own port with `--clear`. Launch with an explicit component. `start.log` shows a completed bundle and `[queue-perf]` lines. | proof lines saved |
+| U3 | The dev client serves this tree | Create the throwaway worktree of master and run `npm ci --offline` in it (no junction). Start Metro there on its own port with `--clear`. Launch with the explicit `vocacards-dev://expo-development-client/?url=…` URL, then force-stop and relaunch once to clear any wedged DB. **Your** Metro log must show the device's bundle request after launch; the device also caches a bundle and may reconnect to a peer's 8081. | proof lines saved, including the bundle request |
 | U4 | Release app is Play-installed and billing works | `dumpsys package cards.voca.app` shows installer `com.android.vending`, and the paywall shows a test card | shots |
 | U5 | Import is reachable | Through the UI: the Library's "Choose deck file" row, which opens the picker in place. If it's hidden, enable it in Settings → caught-up (Power mode, signed in); see catalog §1 on the onboarding gates. Without the picker (dev client only): copy the deck into the app's own `cache/` with `run-as`, then open `vocacards-dev:///import?uri=file:///data/user/0/cards.voca.app.dev/cache/<f>.apkg&autoImport=1`. Record which path each import test used. | path proven once |
-| U6 | Baseline | Pull the dev DB into `db/00-baseline`, with per-table counts. Screenshot the release app's decks, header and Stats. | files saved |
-| U7 | Two devices on one phone | Sign the release app and the dev client into the same test account | both show the account |
+| U6 | Baseline | Pull the dev DB into `db/00-baseline`, with per-table counts. Screenshot the release app's decks, header and Stats. Inventory `/data/local/tmp` (`ls -la`) and create your own `/data/local/tmp/qa-<date>/` for every push. | files saved |
+| U7 | Two devices on one phone | Sign the release app and the dev client into the same test account. If the dev client can't sign in (see the known SSO message in device-testing §10), run every signed-in test on the release app and block only AC4. | both show the account, or the fallback recorded |
 
 If an unblocker fails, record its exact error, mark the tests that depend on it as
 `BLOCKED(U<n>; tried: …)`, and **continue with everything that doesn't depend on it**.
@@ -88,13 +106,13 @@ oracles.
 
 | ID | Test | Pass when |
 |---|---|---|
-| F1 | Rate **≥ 5 cards per grade** (Again/Hard/Good/Easy), each intended grade logged | one `reviews` row per rating, with the grade matching the log (DB count = 20+) |
+| F1 | Rate **≥ 5 cards per grade** (Again/Hard/Good/Easy), each intended grade logged. Switch to the 4-button rating mode first: the default 2-button mode only offers left and right. | one `reviews` row per rating, with the grade matching the log (DB count = 20+) |
 | F2 | State transitions per grade | new→learning/review, and `due_at`, `reps`, `lapses`, `stability`, `difficulty` move in the right direction for each grade (DB) |
 | F3 | Header vs queue | after force-stop and relaunch, the header equals `probe-queue-divergence.ts` on the pulled DB |
 | F4 | An Again card returns after its learning step (~60 s) | served again only after the step; the LEARN count may lead it (known) |
 | F5 | Undo or back-rate, if the UI offers it | DB row removed or reverted, and the card restored |
 | F6 | Caught-up page | shown only when nothing is servable; a nonzero header plus caught-up means an invisible card (tap test) |
-| F7 | Reviews/day cap = 3 with more due | exactly 3 Review-state cards served; learning cards bypass it (DB) |
+| F7 | Reviews/day cap = 3 with more due. The control is in Power mode, which requires sign-in, so use the release app. | exactly 3 Review-state cards served; learning cards bypass it (DB) |
 | F8 | New/day cap per deck | served new = cap per deck (DB) |
 | F9 | Paused subdeck | excluded from the queue and the header counts |
 | F10 | Cards with audio, cloze and image occlusion | render, play and flip; no blank WebView after a tab switch |
@@ -157,7 +175,7 @@ oracles.
 
 | ID | Test | Pass when |
 |---|---|---|
-| D1 | Drag-reorder subdecks, then relaunch | `subdeck_order::…` persisted (DB, `e2e/assert-db.mjs` model) |
+| D1 | Drag-reorder subdecks, then relaunch. This needs a deck with ≥ 2 subdecks, so import `multideck.colpkg` (I4) first. | `subdeck_order::…` persisted (DB, `e2e/assert-db.mjs` model) |
 | D2 | Pause, then unpause | `subdeck_state::…` persisted; queue and header follow |
 | D3 | Deck preview | cards render; editing from the preview routes by `sourceType` |
 | D4 | Manage cards: search, filter, open | results correct |
@@ -172,7 +190,7 @@ oracles.
 | ID | Test | Pass when |
 |---|---|---|
 | B1 | Local export | file created; size and time recorded |
-| B2 | Local restore round-trip: pull A, export, mutate, restore, pull B | per-table counts equal; 50 sampled `cards` rows equal on every column; `card_tag` identical; presets resolve (DB) |
+| B2 | Local restore round-trip: pull A, export, mutate, restore, pull B. The restore goes through the file picker, so use device-testing §10b if it ignores taps. | per-table counts equal; 50 sampled `cards` rows equal on every column; `card_tag` identical; presets resolve (DB) |
 | B3 | Connect Drive (test Google account) | connected, or the stale-build OAuth cause identified |
 | B4 | Backup folders: create, list, delete | UI and Drive agree |
 | B5 | Cloud backup | "Last backup" updates; duration recorded |
@@ -202,13 +220,13 @@ oracles.
 |---|---|---|
 | P1 | Every paywall entry point | offerings and prices render; close, back and rotate are safe |
 | P2 | Test card, always approves | Pro in the app; time recorded; survives relaunch |
-| P3 | Test card, always declines | clear error; stays free |
-| P4 | Slow test card | pending UI, then Pro |
+| P3 | Test card, always declines. Tap the payment-method row on the sheet to list every test card. | clear error; stays free |
+| P4 | Slow test card (same list) | pending UI, then Pro |
 | P5 | Cancel the purchase sheet | no change |
 | P6 | Purchase offline | clear error |
-| P7 | `pm clear`, sign in, Restore purchases | Pro restored |
-| P8 | Accelerated renewal observed | renewal visible; Pro continuous |
-| P9 | Cancel in Play Store → Payments & subscriptions | Pro lapses at period end; lag recorded |
+| P7 | Within one accelerated period of a fresh purchase (record both times): sign out and in; then `pm clear`, sign in, Restore purchases | Pro restored both times; Restore reports its result (success, or "nothing to restore") |
+| P8 | Accelerated renewal observed (the sheet shows the period, for example "/5 min") | renewal visible; Pro continuous |
+| P9 | Cancel in Play Store → Payments & subscriptions | Pro lapses at period end; lag recorded. Test subscriptions also lapse on their own after a few renewals, so time every "Pro gone" against the purchase clock. |
 | P10 | Pro gating | every Pro feature locked on free and unlocked on Pro (list them) |
 | P11 | Paywall in the dev client (no billing) | fails gracefully |
 
@@ -248,7 +266,7 @@ oracles.
 | ID | Test | Pass when |
 |---|---|---|
 | N1 | Set a reminder | `dumpsys alarm` shows the registration |
-| N2 | Reminder fires (use TT1) | notification posted |
+| N2 | Reminder fires: set it 2–3 minutes ahead (no time travel needed), then background the app | notification posted |
 | N3 | Tap the notification with the app killed | opens to the Flow |
 | N4 | Notification permission denied | the UI explains it; no crash |
 
@@ -274,7 +292,7 @@ oracles.
 | X6 | Label and target census | every icon-only control labelled; targets ≥ 48 dp including hitSlop |
 | X7 | TalkBack traversal of the main screens | sensible focus order; the Flow card gradable without gestures (or noted as a standing proposal) |
 | X8 | Landscape catalogue | per the doc |
-| X9 | System dark/light flip with the app open | themes react as designed |
+| X9 | System dark/light flip with the app open | themes react as designed. The app uses its own four themes and ignores system dark mode, so mark this N/A unless a "follow system" option exists. |
 | X10 | Force RTL (Developer options) | no mirrored-layout breakage in chrome |
 
 ### PF — Performance (release app; n ≥ 5, median and range, detection floor stated)
@@ -290,6 +308,9 @@ oracles.
 | PF7 | Backup and restore durations (local, cloud) | recorded |
 
 ### TT — Time travel (system clock; after P and B)
+
+Move the clock through Settings → Additional settings → Date & time, not adb: `date` and
+`su` fail on retail MIUI (device-testing §10b). Restore automatic time and read it back.
 
 | ID | Test | Pass when |
 |---|---|---|
@@ -312,7 +333,7 @@ oracles.
 
 | ID | Test | Pass when |
 |---|---|---|
-| SX1 | Monkey, release app, **signed out**, seeded with fixtures: 3 seeds × 5,000 events (`--pct-syskeys 0 --pct-appswitch 0 --pct-anyevent 0 --throttle 150`) | crashes and ANRs listed with seeds |
+| SX1 | Monkey, release app, **signed out, with a screenshot of the signed-out state before each seed** (signed in, it reached sign-out in one campaign; if you can't sign out, don't run it), seeded with fixtures: 3 seeds × 5,000 events (`--pct-syskeys 0 --pct-appswitch 0 --pct-anyevent 0 --throttle 150`) | crashes and ANRs listed with seeds |
 | SX2 | Import during an active review session | no "database is locked"; both complete |
 | SX3 | 100 ratings in one session (dev) | DB rows = ratings; no drift in the header |
 
