@@ -65,9 +65,11 @@ takes precedence.
   tokens belong in `expo-secure-store`.
 - Dates: day rollover hour, timezone (`@date-fns/tz`), DST transitions, "today" computed
   in one place (`dayBoundary`). Check any `new Date()` arithmetic done by hand.
-- Reachability: is every feature reachable once the user has data? An entry point that
-  lives only in an empty-state view disappears after first use. Found for `/import`
-  on 2026-09-25: its only entry is `EmptyFlowView`, and its `?uri=` link is `__DEV__`-only.
+- Reachability: is every feature reachable once the user has data, in every mode (Simple
+  and Power, signed in and out)? Look for entry points that live only in an empty-state
+  view, and for settings gates that hide an action with no visible way back (the Library
+  import rows, catalog §1). Census entry points by *handler* (`pickFile`,
+  `router.push`), not by route string: an in-place action never mentions its route.
 
 ## Platform
 

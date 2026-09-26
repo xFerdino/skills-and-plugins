@@ -96,12 +96,18 @@ Map each changed path to the sections to walk. A path can hit several.
   by `(source_apkg, config_hash)`, so each deck gets its own. *Look for:* dedupe by
   `config_hash` alone, which merges two decks that legitimately share one. *Recorded:*
   memory global-preset-no-config-hash; CLAUDE.md on the preset `UNIQUE` failure.
-- **Import unreachable once the user has cards. KNOWN OPEN (found 2026-09-25).** The
-  only navigation to `/import` is `EmptyFlowView.tsx` ("Get started"), which unmounts
-  after the first card. `import.tsx` honours `?uri=` only under `__DEV__`, and `app.json`
-  declares no `.apkg` intent filter. Onboarding copy nonetheless promises "Import as many
-  decks as you like". In device tests, use `pm clear` for the first import, and the
-  dev-client link `vocacards-dev:///import?uri=…&autoImport=1` for later ones.
+- **Library import rows hidden by the onboarding gates** (2026-09-26; a fix was chosen
+  and staged that day, so check master before reporting it). The Library's IMPORT rows
+  call `pickFile` in place. They don't route to `/import`, so grepping for `/import` finds
+  only `EmptyFlowView` and gives the false "unreachable" conclusion a Codex run once
+  reported. The rows are gated by the `library.import*Enabled` settings (`?? true`).
+  Welcome wrote them from `libraryImportGatesFromInterests`
+  (`src/onboarding/getStartedOptions.ts`). Its default ticks don't include "file", so the
+  file row started hidden. The way back, `/settings/caught-up`, sits behind the
+  Power-mode + signed-in gate. The staged fix stops Welcome writing the file gate.
+  **Still open:** installs that already stored `false` stay hidden. *Look for:* any gate
+  that hides a core action with no visible way back. In device tests, the dev-client link
+  `vocacards-dev:///import?uri=…&autoImport=1` drives an import without the picker.
 
 ## §2 Anki field edit modes
 

@@ -59,7 +59,7 @@ assertions are written as a query plus its before and after output, saved as `db
 | U2 | Debuggable dev client `cards.voca.app.dev` installed | 1) Look for an existing APK: `Get-ChildItem C:\tmp -Recurse -Filter *.apk` and check with `aapt dump badging` that the package is `cards.voca.app.dev`. 2) Otherwise build with `eas build --profile development-variant --platform android` and install the APK. This profile builds the dev client with `APP_VARIANT=development`. 3) Or build locally from a short path per `docs/android-build.md`. It installs alongside the release app, with a different package and no signature conflict. | `pm list packages` shows it, and `run-as cards.voca.app.dev true` succeeds |
 | U3 | The dev client serves this tree | Start Metro from the throwaway master worktree on its own port with `--clear`. Launch with an explicit component. `start.log` shows a completed bundle and `[queue-perf]` lines. | proof lines saved |
 | U4 | Release app is Play-installed and billing works | `dumpsys package cards.voca.app` shows installer `com.android.vending`, and the paywall shows a test card | shots |
-| U5 | Import is reachable | **Known F1:** `/import` is reachable only from the empty Flow. First import: `pm clear` the app, then Get started → Import. Later imports (dev client only): `vocacards-dev:///import?uri=<content-or-file-uri>&autoImport=1` works under `__DEV__`. Record which path each import test used. | path proven once |
+| U5 | Import is reachable | Through the UI: the Library's "Choose deck file" row, which opens the picker in place. If it's hidden, enable it in Settings → caught-up (Power mode, signed in); see catalog §1 on the onboarding gates. Without the picker (dev client only): copy the deck into the app's own `cache/` with `run-as`, then open `vocacards-dev:///import?uri=file:///data/user/0/cards.voca.app.dev/cache/<f>.apkg&autoImport=1`. Record which path each import test used. | path proven once |
 | U6 | Baseline | Pull the dev DB into `db/00-baseline`, with per-table counts. Screenshot the release app's decks, header and Stats. | files saved |
 | U7 | Two devices on one phone | Sign the release app and the dev client into the same test account | both show the account |
 
@@ -142,7 +142,7 @@ oracles.
 
 | ID | Test | Pass when |
 |---|---|---|
-| I1 | F1 census: with ≥ 1 card, look for any UI path to import | documented FAIL (known F1) with screenshots of every place a user would look |
+| I1 | Import discoverability: after a default onboarding, in Simple and in Power mode, with ≥ 1 card | the Library import row is visible, or there's a visible way to show it. Screenshot every place a user would look. |
 | I2 | `legacy2-scheduled.apkg` | all 7 cards match `tests/fixtures/anki/ground-truth.json` (state, reps, lapses, stability, difficulty, due, revlog count) (DB) |
 | I3 | `latest-scheduled.apkg` (v18, zstd) | same comparison as I2 |
 | I4 | `multideck.colpkg` | decks and subdecks created as in the fixture; card counts match |
@@ -260,7 +260,7 @@ oracles.
 | NAV2 | Unsaved-edit guard | prompts before discarding |
 | NAV3 | Deep links to every route, with valid, malformed and missing params | no crash; sensible fallback |
 | NAV4 | Tab switching | Stream state retained; the card-entry slide replays (by design) |
-| NAV5 | Every feature reachable from a non-empty state | list every entry point per feature; anything only reachable from an empty state is a finding (F1 class) |
+| NAV5 | Every feature reachable from a non-empty state | list every entry point per feature; anything only reachable from an empty state, or hidden by a gate with no visible way back, is a finding |
 
 ### X — Cross-cutting UI
 
@@ -305,7 +305,7 @@ oracles.
 |---|---|---|
 | FI1 | `pm clear`, then onboarding end to end (language, account, Pro screen, first deck or course) | completes; each screen shot |
 | FI2 | Known: onboarding stamps an archived deck without content | REPRODUCED/FIXED |
-| FI3 | Empty states: no decks, nothing due | helpful copy; F1 entry present only here (context for I1) |
+| FI3 | Empty states: no decks, nothing due | helpful copy; the Get started import entry works |
 | FI4 | First launch offline | usable, or a clear message |
 
 ### SX — Stress
@@ -321,7 +321,8 @@ oracles.
 K1 edit strips pack identity (E2) · K2 LEARN overstatement (F4) · K3 stale snapshot (F12)
 · K4 special-session card stranded low · K5 #179 (S4) · K6 restore carries all columns (B2)
 · K7 reviews/day cap scope (F7) · K8 onboarding archived deck (FI2) · K9 OAuth "signed in"
-card on release · K10 F1 import entry (I1) · K11 F2 audio button unlabeled (X6).
+card on release · K10 Library import rows hidden after onboarding (I1) · K11 audio button
+unlabeled (X6).
 Each gets REPRODUCED / FIXED / NOT TESTABLE, with evidence.
 
 ## 4. Order of execution
