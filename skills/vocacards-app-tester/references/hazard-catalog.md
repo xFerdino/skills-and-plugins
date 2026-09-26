@@ -108,6 +108,25 @@ Map each changed path to the sections to walk. A path can hit several.
   **Still open:** installs that already stored `false` stay hidden. *Look for:* any gate
   that hides a core action with no visible way back. In device tests, the dev-client link
   `vocacards-dev:///import?uri=…&autoImport=1` drives an import without the picker.
+- **Anki import drops history by default. OPEN PRODUCT QUESTION (2026-09-26); don't
+  report it as a new bug.**
+  - The import screen starts with "Import learning progress" **off**
+    (`src/lib/importDeckState.ts:111`), while the parser's own default is `true`
+    (`src/lib/apkgParser.ts:1821`). There's no DECISIONS entry; "off" came across
+    verbatim in the #80 refactor. The deep-link auto-import can never turn it on.
+  - Even with it on, `.apkg` import replays revlog into FSRS scheduling but writes no
+    `reviews` rows, so Stats and the streak don't count imported history. Only the JSON
+    backup path writes `reviews`.
+  - Onboarding promises that an import "keeps the review history you have already built
+    up".
+  - *Look for:* a change to either default, or to what import writes, and flag the
+    mismatch.
+- **Unsaved-edit guard on 1 of 4 editor mounts (checked 2026-09-26, master
+  `f83bcbef`).** Only `decks/[primaryTag]/cards.tsx` passes `onDirtyChange` and adds a
+  `beforeRemove` listener. `preview.tsx:831`, `(tabs)/stream.tsx:1935` and `add.tsx:843`
+  mount `CardEditor` without it, so Back or Cancel silently discards a typed edit (a
+  device run confirmed this on `preview.tsx`). *Look for:* any new `<CardEditor` mount
+  without the dirty guard.
 
 ## §2 Anki field edit modes
 

@@ -317,6 +317,16 @@ Don't chase these as app defects:
   back.
 - **Reminders without time travel.** Set the reminder time 2–3 minutes ahead, background
   or kill the app, and wait.
+- **Offline on MIUI.** MIUI ignores the AIRPLANE_MODE broadcast, so a "network off"
+  command can report success while the phone stays online. Use `svc wifi disable` and
+  `svc data disable`. Before any offline test, confirm with
+  `adb shell ping -c 1 -W 2 8.8.8.8` that it fails, then read it back as working
+  afterwards.
+- **Rating cards on the Flow.** The rating buttons aren't in the accessibility tree,
+  which is also an accessibility finding. In the 2026-09-26 run, only a slow swipe
+  (longer than about 800 ms) committed a review. Use `input swipe x1 y1 x2 y2 900`, or a
+  `motionevent` drag spread over at least 800 ms. Confirm every rating with a `reviews`
+  count.
 
 ## 10c. Billing tests (Play license tester)
 

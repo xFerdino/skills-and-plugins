@@ -106,7 +106,7 @@ oracles.
 
 | ID | Test | Pass when |
 |---|---|---|
-| F1 | Rate **≥ 5 cards per grade** (Again/Hard/Good/Easy), each intended grade logged. Switch to the 4-button rating mode first: the default 2-button mode only offers left and right. | one `reviews` row per rating, with the grade matching the log (DB count = 20+) |
+| F1 | Rate **≥ 5 cards per grade** (Again/Hard/Good/Easy), each intended grade logged. Switch to the 4-button rating mode first: the default 2-button mode only offers left and right. Swipe slowly (≥ 800 ms; see device-testing §10b), because the rating buttons aren't in the accessibility tree. Also record that as an X6 finding. | one `reviews` row per rating, with the grade matching the log (DB count = 20+) |
 | F2 | State transitions per grade | new→learning/review, and `due_at`, `reps`, `lapses`, `stability`, `difficulty` move in the right direction for each grade (DB) |
 | F3 | Header vs queue | after force-stop and relaunch, the header equals `probe-queue-divergence.ts` on the pulled DB |
 | F4 | An Again card returns after its learning step (~60 s) | served again only after the step; the LEARN count may lead it (known) |
