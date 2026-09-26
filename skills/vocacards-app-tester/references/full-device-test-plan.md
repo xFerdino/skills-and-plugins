@@ -60,6 +60,15 @@ count equals the fixture's count before trusting "0 mismatched".
 deleted deck and a few ratings, each with evidence. Without one, a restore that does
 nothing passes.
 
+**Both restores (Import JSON and Drive Restore) are documented merges, not replaces.**
+The copy is at `backup.tsx:1061` and `:975`. Expect:
+- **Deleted cards and decks come back**, with their `card_tag` and deck bindings.
+- **Cards added after the backup stay.** A surviving marker is correct.
+- **Cards the backup contains revert to its scheduling.**
+
+Keep the marker out of the deck you delete, or the deletion, not the restore, removes
+it. That happened once and read as "restore removed the marker".
+
 **Lessons from the second campaign (2026-09-25/26).** It ran 10 hours with 0 TODO, but
 two headline findings didn't survive review:
 - **A blocker on one build isn't a blocker for the test.** 19 rows were BLOCKED because
@@ -199,7 +208,7 @@ oracles.
 | ID | Test | Pass when |
 |---|---|---|
 | B1 | Local export | file created; size and time recorded |
-| B2 | Local restore round-trip: pull A, export, mutate, restore, pull B. The restore goes through the file picker, so use device-testing §10b if it ignores taps. | per-table counts equal; 50 sampled `cards` rows equal on every column; `card_tag` identical; presets resolve (DB) |
+| B2 | Local restore round-trip: pull A, export, mutate, restore, pull B. The restore goes through the file picker, so use device-testing §10b if it ignores taps. | merge semantics (see §1): the deleted deck's cards, their `card_tag` rows and the deck/tag rows are back; the marker in a *surviving* deck remains; cards in the file equal the file on every column; presets resolve (DB) |
 | B3 | Connect Drive (test Google account) | connected, or the stale-build OAuth cause identified |
 | B4 | Backup folders: create, list, delete | UI and Drive agree |
 | B5 | Cloud backup | "Last backup" updates; duration recorded |
