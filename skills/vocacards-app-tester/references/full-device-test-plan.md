@@ -216,7 +216,7 @@ oracles.
 | B7 | Sign out and in, then cloud restore | decrypts (per-user key re-fetched); any "can't decrypt" is 🔴 |
 | B8 | Automatic backups and rotation, if offered | oldest removed, newest never |
 | B9 | Backup offline | a clear error, no corrupt partial |
-| B10 | Kill the app mid-restore | the app recovers to a consistent state (DB) |
+| B10 | Kill the app mid-restore. Reset to a known baseline (`pm clear`) before each run, then start the restore and `am force-stop` in the **same** `adb shell` call after stepped delays (100, 200, 300, 500, 800 ms). Classify each run as baseline, full or partial, with `integrity_check`. A small import can commit in under a second, so a kill "about a second later" usually lands after the commit. | no run is partial, AND at least one run has evidence (a UI dump or log) that the kill landed *during* the import. Without that evidence, it's inconclusive, not PASS. |
 | B11 | Media survives a restore (IO or audio cards) | media plays and renders after restore |
 
 ### AC — Account and sync
