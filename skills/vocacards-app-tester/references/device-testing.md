@@ -189,6 +189,15 @@ Memory: adb-gesture-testing-motionevent.
   header but is **silently corrupt** (empty `sqlite_master`). Always take the `-wal`,
   because recent writes live there. Query with `better-sqlite3` (Node 22) from the repo
   root, or compare with `npx tsx scripts/probe-queue-divergence.ts`.
+  - **On the Redmi (MIUI), `run-as` can't write to `/data/local/tmp`** (measured
+    2026-09-26), so `device.sh pulldb` fails there. Stream the file instead, through a
+    **byte-exact** redirect:
+    `cmd /c "adb -s <id> exec-out run-as <pkg> cat files/SQLite/vocacards.db > C:\…\vocacards.db"`.
+    Use the same form for the `-wal`. cmd.exe's `>` is byte-exact; Git Bash's `>` and
+    PowerShell 5.1's `>` are not.
+  - Validate every pull with `PRAGMA integrity_check` **and** a row count. Size and
+    header checks pass on a corrupt copy.
+  - The database lives in `files/SQLite/`, not `databases/`.
 - **Release build (no `run-as`).** The app's UI is the instrument. For timing, render a
   `mark()` ring buffer as small monospace text inside the body that's on screen during
   the bug, then read it from one screencap. Build and install, then revert the probes
@@ -311,6 +320,18 @@ Don't chase these as app defects:
      own `cache/` with `run-as`, then use the `/import?uri=…&autoImport=1` deep link.
      Try both `vocacards-dev:///import?…` and `vocacards-dev://import?…`, because one
      campaign saw the Add screen open instead.
+- **The folder picker (SAF, used for local export) is harder than the file picker.** On
+  the Redmi, its folder rows report `clickable=false` and ignore taps, `motionevent` and
+  a forced initial URI. The file picker used by Import JSON and "Choose deck file" works
+  on the same phone. Ways around it:
+  - Don't tap list rows. Open the picker's side drawer, pick Downloads or the storage
+    root, then press the bottom "USE THIS FOLDER" button, then Allow.
+  - Use an app that already holds a folder grant: the release app exported to
+    `/sdcard/vcbackup/` with no picker.
+  - For a column-level restore check on the dev client, you don't need its export at all.
+    Local exports are **plain JSON**. Pull the file from shared storage (no `run-as`
+    needed), push it to `/sdcard/Download`, restore it through the file picker, pull the
+    DB, and compare it with the JSON column by column.
 - **Moving the clock without root.** `adb shell date` and `su` fail on retail MIUI. Use
   Settings → Additional settings → Date & time: turn off automatic time, then set the
   date. Verify with `adb shell date`. Turn automatic time back on at the end, and read it
