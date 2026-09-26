@@ -351,8 +351,15 @@ Don't chase these as app defects:
   Settings → Additional settings → Date & time: turn off automatic time, then set the
   date. Verify with `adb shell date`. Turn automatic time back on at the end, and read it
   back.
-- **Reminders without time travel.** Set the reminder time 2–3 minutes ahead, background
-  or kill the app, and wait.
+- **Reminders without time travel.** The reminder time is an **hour-granular slider**
+  (`profile.tsx`, 0–23), so set the next full hour and wait.
+  - Kill the app with **`am kill`, never `am force-stop`**. Force-stop cancels the app's
+    pending alarms (3 → 0, measured 2026-09-26), so the reminder can't fire and N3 becomes
+    unobservable.
+  - Check the registration with `dumpsys alarm | grep cards.voca`: there are 3
+    RTC_WAKEUP alarms over the 3-day horizon.
+  - Check delivery in the notification shade. Then tap the notification with the app not
+    running.
 - **Offline on MIUI.** MIUI ignores the AIRPLANE_MODE broadcast, so a "network off"
   command can report success while the phone stays online. Use `svc wifi disable` and
   `svc data disable`. Before any offline test, confirm with
