@@ -355,6 +355,25 @@ Don't chase these as app defects:
   the collection.
 - iOS is always an EAS round-trip. Assume any iOS dev client is stale (hence the
   lazy-require rule).
+- **Building the dev client (`cards.voca.app.dev`) locally.**
+  - `APP_VARIANT=development` must be set for `expo prebuild`. Without it,
+    `app.config.js` builds the *release* package, with the production Google scheme:
+    the collision `94162bc5` fixed.
+  - Before building, check the generated `AndroidManifest.xml`. The package should be
+    `cards.voca.app.dev`, with schemes `vocacards-dev` and
+    `com.googleusercontent.apps.<dev id>`, and the production scheme absent.
+  - A fresh tree needs `android/local.properties` (the SDK path), which is gitignored.
+  - Sign with the same debug keystore as the installed dev client, so `install -r`
+    keeps its data. That's `5E:8F:16:06:…:F6:25` on the Redmi as of 2026-09-26.
+- **Drive on the dev client needs its own Google OAuth client.**
+  - It must be an Android client for `cards.voca.app.dev`, registered with the SHA-1 of
+    the key that **signs the dev client**, not `~/.android/debug.keystore`.
+  - "Enable custom URI scheme" must be on, because the redirect is the reversed client
+    id.
+  - Its id goes in `.env.local` as `EXPO_PUBLIC_GOOGLE_OAUTH_DEV_CLIENT_ID`, in the tree
+    Metro serves from. Restart Metro afterwards, since `.env` is read at startup.
+  - The scheme is baked in at prebuild, so a new id also means rebuilding the dev
+    client.
 
 ## 12. E2E guard
 
