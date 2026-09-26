@@ -220,6 +220,11 @@ migration).
   revision (`notifyCardDataChanged`, or the coalesced `notifyCardDataChangedSoon` on the
   review hot path), or an outside-`store.ts` write with no `notifyTagsChanged()`.
   *Why:* the UI stays stale until something unrelated refreshes it.
+  *Confirmed instance (2026-09-26; a fix was queued, so check master):* Import JSON.
+  `importFromParsed` (`src/flow/export.ts`) never notifies, so the Library showed a
+  just-restored deck only after a relaunch. The Drive restore masks the same gap with
+  `reloadApp()`. **A JS reload in one caller can hide a missing notify in a shared
+  function.** Check every caller, not just the one you tested.
 - **A notify storm.** *Look for:* `notifyTagsChanged()` inside a loop or per-row during
   import or merge. *Why:* each notify triggers a read storm (305 query batches in 146 s
   during one import). That storm, not the writes, is what contends for the DB and

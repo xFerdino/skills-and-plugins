@@ -120,6 +120,10 @@ read-only checks below and prints what it finds.
   row. An `am start` after a force-stop lands on the **dev-launcher screen**, not the app
   (test-validity-rules register). Unlock the device first, because launching into a
   locked device lands on an error screen.
+- **Deep links beat scrolling.** Both builds route by scheme: `vocacards:///<route>`
+  for release, `vocacards-dev:///<route>` for the dev client. For example
+  `vocacards:///settings/backup` goes straight to the backup screen, while the Settings
+  rows shift with the Pro banner. Open modals through the real UI, though (§7).
 
 ## 4. Safety before any input
 
