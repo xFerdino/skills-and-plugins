@@ -222,6 +222,12 @@ Memory: adb-gesture-testing-motionevent.
   uiautomator node whose bounds are `[0,0][0,0]` are unreliable; the editor's Save and
   Cancel were such nodes. Judge the control by what tapping it does (a DB row or a visible
   change). Take the tap coordinates from a visible sibling, not from the node.
+- **Custom switches report `checked=false` even when visibly ON** (2026-09-26). Read
+  their state from a screenshot, and record the mismatch as an accessibility finding:
+  a screen reader gets the same wrong state. The rating buttons are missing from the
+  tree altogether (§10b).
+- **`run-as` can write to the app's own `cache/`** but not to `/data/local/tmp` on the
+  Redmi. Stage files for the dev-only import deep link there.
 - **The dev client's DB can wedge.** After reloads it can hit `DB init failed … database
   is locked`, and writes may then hang silently. Before any write test on the dev client,
   force-stop it, relaunch, and prove one write lands (a DB count). Once a lock has been
@@ -324,10 +330,18 @@ Don't chase these as app defects:
   the Redmi, its folder rows report `clickable=false` and ignore taps, `motionevent` and
   a forced initial URI. The file picker used by Import JSON and "Choose deck file" works
   on the same phone. Ways around it:
-  - Don't tap list rows. Open the picker's side drawer, pick Downloads or the storage
-    root, then press the bottom "USE THIS FOLDER" button, then Allow.
-  - Use an app that already holds a folder grant: the release app exported to
-    `/sdcard/vcbackup/` with no picker.
+  - **Android 11+ refuses "Use this folder" on the storage root and on Download.** There
+    the button just navigates, and no Allow dialog appears. Grant a **subfolder**: the
+    existing `vcbackup`, or ⋮ → New folder. Then press "Use this folder" (it may be
+    off-screen; scroll or check the dump) and Allow. Campaign 2 completed this on the
+    Redmi (B1, about 8 s).
+  - Grants don't survive `pm clear`, so an earlier export's folder doesn't mean a live
+    grant.
+  - **Never hand-build an export file to test restore.** It would test your model of the
+    format, not the app's, and could hide a column the real export drops. Use a real
+    export, including one from an earlier run (they're kept under
+    `qa-runs\…\db\B1-export.json` and `/sdcard/vcbackup/`). Restoring an older
+    version's export into master is itself a useful cross-version test.
   - For a column-level restore check on the dev client, you don't need its export at all.
     Local exports are **plain JSON**. Pull the file from shared storage (no `run-as`
     needed), push it to `/sdcard/Download`, restore it through the file picker, pull the
