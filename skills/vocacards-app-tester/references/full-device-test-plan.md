@@ -51,6 +51,15 @@ listed UI oracle. Downgrade only to what the evidence supports.
 **Evidence.** Every row cites a file in `shots/`, `dumps/`, `db/`, `logs/` or `perf/`. DB
 assertions are written as a query plus its before and after output, saved as `db/<ID>.txt`.
 
+**Comparison scripts print compared/expected, and fail on a mismatch.** A lookup that
+misses a key skips that item silently. In the follow-up run, "6 matched" hid a 7th card
+the script never compared (`long_history` vs `long history`). Assert that the compared
+count equals the fixture's count before trusting "0 mismatched".
+
+**A restore test needs a visible mutation between backup and restore**: a marker card, a
+deleted deck and a few ratings, each with evidence. Without one, a restore that does
+nothing passes.
+
 **Lessons from the second campaign (2026-09-25/26).** It ran 10 hours with 0 TODO, but
 two headline findings didn't survive review:
 - **A blocker on one build isn't a blocker for the test.** 19 rows were BLOCKED because

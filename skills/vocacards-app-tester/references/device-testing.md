@@ -331,10 +331,11 @@ Don't chase these as app defects:
   a forced initial URI. The file picker used by Import JSON and "Choose deck file" works
   on the same phone. Ways around it:
   - **Android 11+ refuses "Use this folder" on the storage root and on Download.** There
-    the button just navigates, and no Allow dialog appears. Grant a **subfolder**: the
-    existing `vcbackup`, or ⋮ → New folder. Then press "Use this folder" (it may be
-    off-screen; scroll or check the dump) and Allow. Campaign 2 completed this on the
-    Redmi (B1, about 8 s).
+    the button just navigates, and no Allow dialog appears. Grant a **subfolder**. The
+    recipe confirmed on the Redmi (2026-09-26): picker → New folder ("Nowy folder") →
+    name it, which puts you inside it (check the breadcrumb) → "Use this folder" ("UŻYJ
+    TEGO FOLDERU"; it may be off-screen, so scroll or check the dump) → Allow
+    ("Zezwól"). The Allow dialog appearing is the proof that the grant happened.
   - Grants don't survive `pm clear`, so an earlier export's folder doesn't mean a live
     grant.
   - **Never hand-build an export file to test restore.** It would test your model of the
