@@ -222,6 +222,9 @@ Memory: adb-gesture-testing-motionevent.
   exist only under `__DEV__`, brightness tests fail on a dark theme, and the Android home
   screen passes a "bright band" test. Run a negative control (app stopped) and a positive
   control (app up) before trusting any gate (test-validity-rules register).
+- **A uiautomator dump covers every window on screen**, including another app behind the
+  one you drive. Filter the nodes by `package=` before attributing one to an app: a
+  release app's "Account" row was once read as the dev client's.
 - **Zero-size nodes aren't evidence.** `enabled`, `selected` and `checked` read from a
   uiautomator node whose bounds are `[0,0][0,0]` are unreliable; the editor's Save and
   Cancel were such nodes. Judge the control by what tapping it does (a DB row or a visible
@@ -309,8 +312,18 @@ Don't chase these as app defects:
   - `expo-auth-session` itself is pure JS, so it never appears in an APK.
   - The 2026-09-20 dev APK does contain every native module it needs: ExpoCrypto,
     ExpoCryptoAES, ExpoLinking, ExpoWebBrowser (checked in the dex).
-  - The real cause is unknown. Diagnose it in React Native DevTools with "pause on caught
-    exceptions". Meanwhile, run signed-in tests on the release app, which signs in fine.
+  - That older error's real cause was never isolated. If it recurs, diagnose it in React
+    Native DevTools with "pause on caught exceptions".
+- **Dev-client sign-in and deep links need `APP_VARIANT=development` in Metro's env**
+  (solved 2026-09-27).
+  - Put it in the `.env.local` of the tree Metro serves the dev client from, then
+    restart Metro.
+  - Without it, the bundle keeps `app.json`'s `vocacards` scheme and Metro logs
+    `Linking found multiple possible URI schemes … Using 'vocacards'`. Clerk's OAuth
+    reply then deep-links into the RELEASE app, and the dev client says "Google sign-in
+    cancelled".
+  - The dev APK's manifest can be correct while the bundle is wrong. Check the Metro log
+    for that warning before debugging sign-in.
 - On the dev client, the dev-menu gear overlaps the Flow's "Filter decks" control, so a tap
   there opens the dev menu. Run filter tests on the release app.
 
