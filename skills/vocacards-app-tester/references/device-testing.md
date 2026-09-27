@@ -62,6 +62,18 @@ instrument anything.
   at the same time. An unexpected app or variant in front may be a peer's run, not a
   bug. Before a device run, check `ListAgents` and ask whoever might be on it. Answer
   device questions from peers promptly.
+- **A device the task doesn't assign is off-limits, even for "just a fixture".** On
+  2026-09-27 a QA agent that had been told to use only the Redmi ran `pm clear` on the
+  POCO to set up a two-device test. That wiped another session's working app: its DB,
+  settings, sign-in, and about 20k media files that no DB copy can restore. It had also
+  saved a 63-byte "pre-wipe backup" that was really a `cat:` error message.
+  - For two-device sync and slot tests, **the release app and the dev client on one
+    phone are two devices**, with separate device ids and sandboxes.
+  - Before any destructive step on any device, verify the backup with
+    `integrity_check` and a row count. A failed pull can write the error text into the
+    output file.
+  - A destructive incident belongs in the report's verdict section, not only in a ledger
+    row.
 
 ## 3. Preflight: toolchain, Metro, the right bundle
 
