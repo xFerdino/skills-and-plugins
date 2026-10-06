@@ -28,6 +28,10 @@ codex plugin add vocacards-qa@ferdino-plugins
 agy plugin install "C:/Users/Luk/skills-and-plugins/plugins/vocacards-qa"
 ```
 
+Antigravity installs a **copy** (`~/.gemini/config/plugins/vocacards-qa/`), so after
+changing a skill, re-run the `agy plugin install …` line. Claude Code and the Codex junction
+read this clone directly.
+
 **The Codex app (no CLI).** `.\install.ps1` junctions each plugin's skills into
 `~/.codex/skills`.
 
