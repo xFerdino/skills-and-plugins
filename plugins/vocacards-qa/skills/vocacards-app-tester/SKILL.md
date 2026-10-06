@@ -40,6 +40,7 @@ one-file PR gets a one-file review.
 | **D. Release readiness** | before an EAS production build, a Play or TestFlight submission, a version bump | catalog §12, `docs/known_issues.md`, `eas.json` |
 | **E. Full device campaign** | "test everything on the phone", "as comprehensive as possible" | `references/full-device-test-plan.md`, plus everything mode C reads. It's a multi-session campaign held together by a ledger, and it isn't done while any test is still TODO. |
 | **F. Anki bridge and AnkiDroid migration** | "test the Anki add-on / bridge", "moving from AnkiDroid", "Anki sync" | `references/anki-bridge-and-migration-plan.md`, plus everything mode E reads |
+| **G. Emulator campaign** | "test on the emulator", "Android Studio", fix verification across API levels, rows a non-rooted phone can't run | `references/emulator-campaign-plan.md`, plus `device-testing.md` §10d and everything mode E reads |
 
 Modes combine. A review of a gesture fix is A, then C.
 
