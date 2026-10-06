@@ -18,6 +18,7 @@ can read the full story.
 10. Known non-bugs
     10b. Driving system UI (file picker, clock, reminders)
     10c. Billing tests (Play license tester)
+    10d. Running inside Android Studio, and on emulators
 11. Builds and installs
 12. E2E guard
 
@@ -412,6 +413,59 @@ Don't chase these as app defects:
   after that list is open.
 - **Account deletion ends the test account.** Later purchase tests need a fresh sign-in,
   which on this app creates a new account.
+
+## 10d. Running inside Android Studio, and on emulators
+
+**Android Studio "Bring Your Own Agent"** (announced 2026-09, Canary, Studio Rabbit 2 and
+later, preview).
+- Claude, Codex or Antigravity can run in Studio's agent window through the **Agent
+  Client Protocol (ACP)**.
+- Studio gives them its project graph, build diagnostics, Android SDK tools and **emulator
+  control**, on top of the usual file, shell and test tools.
+- Access is per agent: Settings → Tools → AI → Agents.
+- Source: android-developers.googleblog.com/2026/09/build-your-way-use-any-ai-agent-in-android-studio.html
+
+How to use it for this skill:
+- **List your tools at session start and trust only what's listed.** The announcement
+  doesn't name the individual tools, and it's a preview, so don't assume a "logcat" or
+  "screenshot" tool exists. Where one is missing, fall back to `adb` (everything in
+  this file still applies to an emulator's serial, `emulator-5554`).
+- **Build diagnostics help with dev-client builds** (§11). They're the place to read a
+  failed prebuild or Gradle run, instead of scraping console output.
+- **Compose Previews don't apply.** VocaCards is React Native; its UI isn't Compose.
+  Don't spend rows on them.
+- **Studio's agent window is a different session from a terminal agent.** Notes, the
+  ledger and the run folder still go in `C:\Users\Luk\qa-runs\…`, so a CLI session can
+  resume the work.
+
+**Emulator images: pick one by what the row needs.** No single image does everything:
+
+| Need | Image | Why |
+|---|---|---|
+| Play billing (P rows), Play-installed release build | **Google Play** system image | the only image with the Play Store and license-tester billing; **not rootable** |
+| Time travel (TT), the release app's DB, `/data/local/tmp` freedom | **Google APIs** image (no Play) | `adb root` works, so `date -s`, `run-as`-free reads of any app's data, and system clock control |
+| Closest to users' phones | the physical Redmi | MIUI quirks (§10b) are real for users; emulators don't reproduce them |
+
+- On a rooted Google APIs emulator, **the release build's DB is readable**:
+  `adb root`, then `adb exec-out cat /data/data/cards.voca.app/files/SQLite/vocacards.db`
+  through a byte-exact redirect, with the `-wal`. The Redmi could never give a release DB
+  oracle. You'll need a locally built release APK (§11), since Play installs only on Play
+  images.
+- **Snapshots are the fastest known baseline.** Save an AVD snapshot after setup
+  (`adb emu avd snapshot save qa-base`) and load it before each run
+  (`adb emu avd snapshot load qa-base`). That beats `pm clear` plus onboarding for kill
+  loops (B10, AM14) and fresh-install rows. Record the snapshot name in each row.
+- **Network conditions:** `adb emu network speed gsm|full` and `adb emu network delay
+  gprs|none` for slow-network rows. For true offline, toggle airplane mode and confirm
+  with a failed ping, as on the phone.
+- **Timezone:** start the emulator with `-timezone America/Anchorage`, or change it in
+  Settings; restore it after.
+- An emulator needs `/dev/kvm`-style acceleration (Hyper-V/WHPX on Windows). VirtualBox on
+  this host can contend with it (`docs/known_issues.md`). If the emulator won't boot
+  accelerated, say so and use the Redmi rather than measuring performance on a software
+  renderer.
+- **Never draw performance conclusions from an emulator.** Use it for logic, data and
+  flows, and measure perf on the physical phone (§9).
 
 ## 11. Builds and installs
 
