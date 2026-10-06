@@ -1,0 +1,8 @@
+{
+  "name": "ferdino-plugins",
+  "owner": { "name": "xFerdino" },
+  "metadata": { "version": "1.0.0", "description": "Ferdino's skills and plugins for coding agents." },
+  "plugins": [
+    { "name": "vocacards-qa", "source": "./plugins/vocacards-qa", "description": "QA for the VocaCards Expo/React Native app: change review against the app's recorded hazard classes, on-device and emulator test campaigns (incl. the Anki bridge and AnkiDroid migration), and release-readiness audits." }
+  ]
+}

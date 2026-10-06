@@ -1,0 +1,11 @@
+{
+  "name": "vocacards-qa",
+  "version": "1.0.0",
+  "description": "QA for the VocaCards Expo/React Native app: change review against the app's recorded hazard classes, on-device and emulator test campaigns (incl. the Anki bridge and AnkiDroid migration), and release-readiness audits.",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "VocaCards QA",
+    "shortDescription": "Test, review and audit the VocaCards app",
+    "category": "Productivity"
+  }
+}

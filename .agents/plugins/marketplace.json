@@ -1,0 +1,13 @@
+{
+  "name": "ferdino-plugins",
+  "interface": { "displayName": "Ferdino Plugins" },
+  "plugins": [
+    {
+      "name": "vocacards-qa",
+      "source": "./plugins/vocacards-qa",
+      "description": "QA for the VocaCards Expo/React Native app: change review against the app's recorded hazard classes, on-device and emulator test campaigns (incl. the Anki bridge and AnkiDroid migration), and release-readiness audits.",
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}
