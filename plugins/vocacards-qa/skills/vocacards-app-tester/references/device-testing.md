@@ -63,6 +63,12 @@ instrument anything.
   at the same time. An unexpected app or variant in front may be a peer's run, not a
   bug. Before a device run, check `ListAgents` and ask whoever might be on it. Answer
   device questions from peers promptly.
+- **The adb server is shared by every session on this PC. Never restart or kill it.**
+  That rules out `adb kill-server`, `adb start-server`, `adb reconnect` and
+  `taskkill /im adb.exe`: each drops every other session's devices mid-run. That
+  happened on 2026-10-08 after a force-stop timeout. Recover only what you own:
+  `adb -s <your-emulator> emu kill` and a cold boot or snapshot load of your own AVD, or
+  wait and retry. If the shared server itself is wedged, stop and ask the owner.
 - **A device the task doesn't assign is off-limits, even for "just a fixture".** On
   2026-09-27 a QA agent that had been told to use only the Redmi ran `pm clear` on the
   POCO to set up a two-device test. That wiped another session's working app: its DB,
@@ -199,6 +205,9 @@ Memory: adb-gesture-testing-motionevent.
 
 ## 6. Reading state: DB, logs, counters
 
+- **Raw captures are immutable.** Hash `.db`, `-wal` and `-shm` straight after the pull,
+  and query only a **copy**. Opening the original with SQLite checkpoints the WAL into it
+  and destroys the byte-exact evidence; that happened on 2026-10-08.
 - **Pull the DB** (debuggable builds only):
   `bash scripts/device.sh pulldb <serial> [package] [outdir]`. It copies the `.db`,
   `-wal` and `-shm` through `/data/local/tmp` and cleans up after itself. Never use
