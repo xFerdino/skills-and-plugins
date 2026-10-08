@@ -93,15 +93,41 @@ a ledger finding. Then:
 ### ER — Redesign regression
 
 For every surface a recent redesign touched (read the log and the touched files), one
-row per surface, covering:
-1. **Function:** the surface's main actions work, with a DB oracle where data changes.
-2. **4 themes × 4 styles:** screenshots, plus the Noir chrome audit.
-3. **Font 1.0 / 1.3 / max on the `small` AVD:** no clipping, and fixed-box text centred.
-4. **RTL:** layout mirrors sensibly.
-5. **TalkBack:** labels, roles, focus order, and states exposed.
-6. **Offline:** clear behaviour, no blank screen.
+row per surface. **The checks are risk-sampled, not exhaustive.** A full 16-combination ×
+3-font × RTL × TalkBack × offline matrix per surface runs to thousands of captures; the
+2026-10-08 campaign closed 30 of 161 rows in two days against it. Every category is still
+checked on every surface, but each combination is checked only where a change could
+plausibly break it.
 
-A surface fails a row if any of the six fails; name which one.
+**Base pass: every surface, always.**
+1. **Function:** the main actions work, with a DB oracle where data changes.
+2. **Offline:** clear behaviour, no blank screen.
+3. **TalkBack:** labels, roles, focus order and states, driven with real TalkBack on one
+   build. Add a `uiautomator dump --compressed` with a control run.
+4. **One visual capture:** the default theme and style, at the **maximum font on the
+   `small` AVD**. That's the combination most likely to clip.
+
+**Escalations: add these only when the trigger applies,** and record the trigger in the
+row:
+
+| Check | Trigger: run it if the diff for this surface… | Scope when triggered |
+|---|---|---|
+| All 4 themes × 4 styles | changes colour, tokens, `tint`/`accent`, pills or chips, borders or backgrounds, OR typography, faces or `designStyles` scales | all 16, with the Noir chrome audit |
+| Themes only (4) | changes colour or tokens but not typography | the 4 themes in the default style |
+| Styles only (4) | changes typography or spacing but not colour | the 4 styles in the default theme, at max font |
+| Font 1.0 / 1.3 | the max-font capture shows tight fit (text within 4 dp of a container edge) or uses a fixed-size box | add the two lower scales |
+| RTL | the surface has directional layout: rows with leading or trailing elements, chevrons, swipe directions, `left`/`right`/`start`/`end` in its styles | force RTL plus an Arabic locale |
+| Both builds | the diff touches native config, R8-sensitive code (reflection, dynamic requires), or anything a dev-only path guards | the same checks on release and dev |
+
+**Not sampled: always exhaustive.** The Flow card faces (the frozen geometry; any change
+is high-risk), the paywall, and destructive dialogs (delete account, delete deck, restore)
+get the full 16 combinations × 3 fonts. A wrong colour or a clipped warning there costs
+money or data.
+
+A surface fails a row if the base pass or any triggered escalation fails; name which.
+Record the escalations **not** triggered, with the reason (for example "styles: no
+typography change in `abc123`"). An untriggered check is a reasoned scope decision, not a
+skip.
 
 **R8 / minification row:** when a release build turns on R8, exercise import, backup,
 restore, sign-in, the paywall and reminders on the release build, with `logcat -b crash`
@@ -130,6 +156,6 @@ ER → EM → K verdicts → cleanup. At cleanup:
 
 On top of the standard report (incidents first):
 - a **fix verification table** (commit → row → status → build)
-- the **redesign regression matrix** (surface × the six checks)
+- the **redesign regression matrix**: each surface × the base pass plus its triggered escalations, and the reason each untriggered check was skipped
 - **API-level differences**
 - **reusable assets**: the AVDs, the snapshots, and the build commands that worked
