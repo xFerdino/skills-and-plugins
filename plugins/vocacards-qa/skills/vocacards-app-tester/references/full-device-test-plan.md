@@ -63,6 +63,16 @@ assertions are written as a query plus its before and after output, saved as `db
 - **Check each capture at capture time.** A scripted capture asserts the dump contains the
   expected text (for example "Hold to delete") and retries or fails if it doesn't. A
   48-cell matrix once had 25 cells showing the wrong screen.
+- **A kill row kills the app's own process during an app write.** Show the PID belongs to
+  `cards.voca.app` and where the kill landed (progress capture, lock contention, WAL
+  size). Killing an `sqlite3` shell that holds a transaction tests SQLite, not the app.
+- **A time-travel row needs app captures before and after each clock move**: Flow due
+  counts, the Progress streak, the header rollover. DB counts can't change under a clock
+  move, so on their own they prove nothing.
+- **Motion evidence is judged by eye, not by md5.** Screen captures of an unchanged screen
+  hash differently (encoding noise), so "3 distinct frames" proves nothing. Record during
+  the action, pull frames from inside the transition, and name in the note what visibly
+  differs between them. A still, or frames of a resting screen, is `STATIC-ONLY`.
 - **A crash in any cited log fails the row.** Grep every cited log for `FATAL EXCEPTION`
   before writing PASS; app crashes go at the top of the report as findings. An R8 row
   once reported "0 crashes" while citing a log with 23 release-app crashes.
