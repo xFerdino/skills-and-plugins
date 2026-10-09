@@ -212,6 +212,11 @@ Lead with the answer, then list findings by severity:
 - <e.g. iOS: no build available; gesture feel: needs the user's hand>
 ````
 
+A device verdict needs device evidence: a unit test or a source reading is `STATIC-ONLY`,
+never PASS or FIXED-VERIFIED. Before reporting a campaign, check every cited file exists
+and that no two rows cite identical bytes (`md5sum`). Never write "release ready" or
+"certified"; report the ledger and leave the ship call to the owner.
+
 With more than about 10 findings, or when the user says the report is for someone else,
 also write it to a markdown file in the scratchpad and offer to publish it. Don't write
 into `docs/reports/`, which is read-only history.

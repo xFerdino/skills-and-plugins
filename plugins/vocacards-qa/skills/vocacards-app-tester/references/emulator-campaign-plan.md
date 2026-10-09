@@ -85,7 +85,11 @@ For every fix commit since the previous campaign report, write one row. Read
 a ledger finding. Then:
 - **Re-run the original row** on current master: on the dev client, and on the release
   build where relevant.
-- **Status:** `FIXED-VERIFIED(<build>)` or `STILL-BROKEN(<build>)`, with evidence.
+- **Status:** `FIXED-VERIFIED(<build>)` or `STILL-BROKEN(<build>)`, with a capture of the
+  fixed behaviour on that build (plus a DB before/after where data changes). Reading the
+  commit and running its unit test is `STATIC-ONLY`, not verified. For motion fixes
+  (easing, tint fades, springs), capture the motion: `screenrecord` frames across the
+  transition, not one still.
 - **Accessibility fixes:** verify with TalkBack actually driving the control, plus
   `uiautomator dump --compressed` with a control run. A dump alone isn't TalkBack
   evidence.

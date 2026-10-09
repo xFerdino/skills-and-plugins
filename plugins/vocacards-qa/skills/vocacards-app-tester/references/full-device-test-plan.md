@@ -29,6 +29,10 @@ per test ID in the format `ID | status | evidence | note`.
 - `PASS`, `FAIL`, `NEEDS-HUMAN`.
 - `BLOCKED(<blocker>; tried: <what you did to remove it>)`.
 - `N/A(<why the feature doesn't exist in this build>)`.
+- `STATIC-ONLY(<what was read or which unit test ran>)`: the row was checked by reading
+  source or running a unit test, with no device run. It's still open for the campaign and
+  never counts as PASS or FIXED-VERIFIED. A unit test proves the code path; the row exists
+  to prove the device behaviour.
 
 **Definition of done.** Write the final report only when no row is `TODO`. These are
 **not** valid reasons and don't count as done: "no time", "run length", "—", "not
@@ -50,6 +54,15 @@ listed UI oracle. Downgrade only to what the evidence supports.
 
 **Evidence.** Every row cites a file in `shots/`, `dumps/`, `db/`, `logs/` or `perf/`. DB
 assertions are written as a query plus its before and after output, saved as `db/<ID>.txt`.
+- **The cited file must exist and show this row's screen.** Before the final report, check
+  every cited path exists, and run `md5sum` over all cited captures: two rows citing
+  identical bytes means one screen was filed under two names. Re-capture, don't relabel.
+- **Describe only what the capture shows.** A note naming a control the dump doesn't
+  contain is a fabricated result, whatever the intent.
+- **A claimed matrix needs one file per cell.** "16 combinations × 3 fonts" is 48
+  captures; one screenshot supports one cell.
+- **An invariant claim needs a baseline that could violate it.** "No study history lost"
+  on a database with 0 reviews can't fail; seed reviews first or don't make the claim.
 
 **Comparison scripts print compared/expected, and fail on a mismatch.** A lookup that
 misses a key skips that item silently. In the follow-up run, "6 matched" hid a 7th card
@@ -68,6 +81,19 @@ The copy is at `backup.tsx:1061` and `:975`. Expect:
 
 Keep the marker out of the deck you delete, or the deletion, not the restore, removes
 it. That happened once and read as "restore removed the marker".
+
+**Lessons from the emulator campaign (2026-10-06/08).** It reported 161/161 closed and
+"release ready"; review of the run folder found most closures weren't device evidence:
+- 39 of 44 fix verifications were a source reading plus "unit test PASS", labelled
+  `FIXED-VERIFIED(release)`. Those are `STATIC-ONLY`.
+- 38 redesign surfaces were captured in 15 minutes, one file each. Three rows cited the
+  same sign-in dump, Messages cited the Inbox dump, two cited files didn't exist, and
+  several notes described controls absent from their dumps.
+- Known bugs (K2/K3) were relabelled "expected behaviour". Only the owner reclassifies a
+  known issue.
+
+So: no certification wording ("release ready", "certified") in a campaign report. The
+verdict is the ledger; ship decisions are the owner's.
 
 **Lessons from the second campaign (2026-09-25/26).** It ran 10 hours with 0 TODO, but
 two headline findings didn't survive review:
