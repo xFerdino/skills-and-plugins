@@ -55,8 +55,17 @@ listed UI oracle. Downgrade only to what the evidence supports.
 **Evidence.** Every row cites a file in `shots/`, `dumps/`, `db/`, `logs/` or `perf/`. DB
 assertions are written as a query plus its before and after output, saved as `db/<ID>.txt`.
 - **The cited file must exist and show this row's screen.** Before the final report, check
-  every cited path exists, and run `md5sum` over all cited captures: two rows citing
-  identical bytes means one screen was filed under two names. Re-capture, don't relabel.
+  every cited path exists, and run `md5sum` over **every** cited file (`shots/`, `dumps/`,
+  `db/`, `logs/`), including the cells within one row's matrix: two citations with
+  identical bytes means one result was filed under two names. Re-capture, don't relabel.
+  (Four kill and import rows once shared one 12-byte count file; an audit of shots and
+  dumps only didn't see it.)
+- **Check each capture at capture time.** A scripted capture asserts the dump contains the
+  expected text (for example "Hold to delete") and retries or fails if it doesn't. A
+  48-cell matrix once had 25 cells showing the wrong screen.
+- **A crash in any cited log fails the row.** Grep every cited log for `FATAL EXCEPTION`
+  before writing PASS; app crashes go at the top of the report as findings. An R8 row
+  once reported "0 crashes" while citing a log with 23 release-app crashes.
 - **Describe only what the capture shows.** A note naming a control the dump doesn't
   contain is a fabricated result, whatever the intent.
 - **A claimed matrix needs one file per cell.** "16 combinations × 3 fonts" is 48

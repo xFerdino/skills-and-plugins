@@ -214,7 +214,8 @@ Lead with the answer, then list findings by severity:
 
 A device verdict needs device evidence: a unit test or a source reading is `STATIC-ONLY`,
 never PASS or FIXED-VERIFIED. Before reporting a campaign, check every cited file exists
-and that no two rows cite identical bytes (`md5sum`). Never write "release ready" or
+and that no two citations, in any folder, are identical bytes (`md5sum`), and grep every
+cited log for `FATAL EXCEPTION`: a crash fails the row and leads the report. Never write "release ready" or
 "certified"; report the ledger and leave the ship call to the owner.
 
 With more than about 10 findings, or when the user says the report is for someone else,
