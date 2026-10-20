@@ -11,6 +11,7 @@ story). Memory names refer to files in the auto-memory directory. Mirrored copie
 `docs/claude-code-memory/`.
 
 When an entry and the code disagree, the code and CLAUDE.md win. Report the drift.
+Last reconciled against `master @ b1cc09ab` on 2026-10-20.
 
 ## Contents
 
@@ -27,6 +28,7 @@ When an entry and the code disagree, the code and CLAUDE.md win. Report the drif
 - §10 Tests and guards
 - §11 Don't "fix" (deliberate oddities)
 - §12 Release readiness
+- §13 Features added in October 2026
 
 ## Path index
 
@@ -50,6 +52,11 @@ Map each changed path to the sections to walk. A path can hit several.
 | `src/capture/**`, `src/app/inbox.tsx` | 3 (`CAPTURE_COLUMNS`), 9 (Convex probes), generic "Network" |
 | `tests/**`, `*.test.ts`, `run-tests.mjs` | 10 |
 | `eas.json`, `app.config.js`, `app.json`, `.easignore`, Android build config | 12 |
+| `src/lib/dict/**` (catalog, `packManager.ts`), `src/app/create-course.tsx`, `convex/courseMeter.ts`, `courseAllowance.ts` | 5, 9, 13 |
+| `src/app/decks/[primaryTag]/practice.tsx`, `modes.tsx`, `src/lib/practiceGames.ts`, `learningModes.ts`, `learningQuiz.ts`, `PracticeGames.tsx` and the game components | 6, 13 |
+| `src/lib/holiday*.ts`, `src/app/settings/holiday.tsx`, `src/notifications/**` | 4, 6, 13 |
+| `src/chatgpt/**`, `src/app/settings/chatgpt.tsx` | 4, 9, 13 |
+| `src/components/QuickBall.tsx`, `src/lib/quickBall.ts` | 7, 13 |
 
 ---
 
@@ -220,9 +227,8 @@ migration).
   revision (`notifyCardDataChanged`, or the coalesced `notifyCardDataChangedSoon` on the
   review hot path), or an outside-`store.ts` write with no `notifyTagsChanged()`.
   *Why:* the UI stays stale until something unrelated refreshes it.
-  *Confirmed instance (2026-09-26; a fix was queued, so check master):* Import JSON.
-  `importFromParsed` (`src/flow/export.ts`) never notifies, so the Library showed a
-  just-restored deck only after a relaunch. The Drive restore masks the same gap with
+  *Confirmed instance (2026-09-26, fixed: `importFromParsed` now ends with
+  `notifyTagsChanged()`):* Import JSON showed a just-restored deck only after a relaunch. The Drive restore masks the same gap with
   `reloadApp()`. **A JS reload in one caller can hide a missing notify in a shared
   function.** Check every caller, not just the one you tested.
 - **A notify storm.** *Look for:* `notifyTagsChanged()` inside a loop or per-row during
@@ -242,10 +248,18 @@ migration).
   `catch { return 0 }`, or a hook that keeps the last good value on failure. There are
   about 100 `.catch(() => {})` in `src`, and most are fine fire-and-forget. The question
   is whether a failure at *this* site leaves persistent wrong state with no signal.
-- **Stale reads.** Writes go through `withExclusiveTransactionAsync`, which opens a new
-  connection. A half-stepped statement left open on the shared reader makes it blind to
-  those commits: the counters freeze and reviewed cards get re-served. The cause is still
-  unknown. *Look for:* statements not finalised on every path (early return, throw).
+- **Stale reads (cause found and fixed 2026-10-20, #349 and #350).** Writes commit on
+  their own connection (`withExclusiveTransactionAsync`). SQLite keeps one read snapshot
+  per connection while **any** statement on it is active. So a burst of overlapping reads
+  on the shared connection that straddles a commit serves the pre-commit snapshot, and
+  nothing re-reads once it drains. Tags were fixed in #349 and card data in #350:
+  `db.ts` counts shared statements (`trackSharedStatements`, `whenSharedReadsIdle`), and
+  `afterSharedReadsSettle` schedules one trailing re-read per target (300 ms, then
+  idle-or-2 s). *Look for:* a new notifier or cache that reads after a write but doesn't
+  route through `notifyTagsChanged`/`notifyCardDataChanged` (so it gets no settled
+  re-read); a settled refresh that re-arms itself (a loop); a hot-path change that adds
+  more than the one extra refresh per burst. *Pinned:* `tests/sharedReadsIdle.test.ts`,
+  `tests/libraryRefreshAfterCourse.test.ts`, `tests/cardDataSettledRefresh.test.ts`.
   *Recorded:* memory app-reads-stale-sqlite-snapshot.
 - **Round-trips, not SQL time.** Each JS↔native SQLite hop costs ~29 ms on device, and
   query time is noise next to that. *Look for:* new sequential awaits on the review hot
@@ -268,9 +282,11 @@ migration).
 - **A special session that outlives its context.** Changing the deck filter must end a
   special session (#179). *Look for:* new session entry or exit paths that skip that
   reset.
-- **The streak gate strands "Loading…".** When the last card rated "Again" comes back as
-  a counted learning card, `streakSyncPending` must clear in the scheduled-due branch even
-  when deduped. *Recorded:* memory streak-sync-pending-strand-hasdue.
+- **The streak gate strands "Loading…" (historical).** `streakSyncPending` no longer
+  exists (0 references on 2026-10-20); the streak number may tick up a few hundred ms
+  after the caught-up page appears, and that's intended. *Look for:* any new gate that
+  holds the caught-up page or a loader on an async streak read. *Recorded:* memory
+  streak-sync-pending-strand-hasdue.
 - **Counter vs servable queue.** The LEARN header counts Again-rated cards ~10 min before
   they're servable, and the same term inflates `dueTodayCount`. It's known, so don't
   re-report it. Do report new code that trusts the counter as "a card is available".
@@ -279,9 +295,12 @@ migration).
   means a card is mounted at opacity 0, not that the session ended (`showingCaughtUpBody`
   requires `!shouldRenderCardStack`). *Recorded:* memory
   diagnosing-invisible-card-on-flow.
-- **FSRS config.** Preset learning and relearning steps now reach `getFsrs`. **Still
-  open:** `toFsrsCard` hardcodes `scheduled_days: 0`, so load balancing has never run.
-  *Recorded:* memory fsrs-config-never-reaches-generatorparameters.
+- **FSRS config.** Preset learning and relearning steps reach `getFsrs`, and load
+  balancing runs (`f6cf1dd`, with a 90-day forecast in `fc01680`). `toFsrsCard` still
+  passes `scheduled_days: 0` to ts-fsrs. That's fine: the granted interval is read from
+  `card.scheduled_days`, not `log.scheduled_days` (comment at `src/flow/scheduler.ts`
+  ~156). *Look for:* code that reads `log.scheduled_days` again. *Recorded:* memory
+  fsrs-config-never-reaches-generatorparameters.
 - **`mastery_score` has two meanings.** Sync replay and warm-start write retrievability
   (≈1.0 right after a review), while live review adds +0.1. Code that compares or
   thresholds it has to know which one it's reading. *Recorded:* memory
@@ -290,9 +309,11 @@ migration).
   the full per-deck daily cap. *Recorded:* memory time-budget-removed.
 - **Reviews/day cap scope.** `maxReviewsPerDay` caps only due cards already in FSRS
   Review state, and Learning/Relearning bypass it (`docs/known_issues.md`).
-- **Frozen Flow geometry and motion.** Card size, padding, positions and motion
-  (`CardStack`, `useCardSwipeResponder`, `FlashCard`'s flip) are frozen. Only the card's
-  corners follow the style. The swipe threshold has one home, `swipePhysics.ts`.
+- **Flow geometry and motion: no longer frozen (2026-09-30), but measured.** The Quiet
+  Study board reshaped the header, card faces, grading and dock (CLAUDE.md, Styles). Change
+  them on purpose, in Papier Light and Noir, on the POCO. The swipe physics
+  (`useCardSwipeResponder`, `swipePhysics.ts`) are still load-bearing: measure before
+  moving them. The swipe threshold has one home, `swipePhysics.ts`.
   *Pinned:* `tests/swipeThresholdSingleSource.test.ts`,
   `tests/geometryConstantRegistry.test.ts`, `tests/geometryLaws.test.ts`.
 - **Stream `freezeOnBlur`.** It's `false` on purpose: a frozen tab blanked WebView cards
@@ -467,3 +488,59 @@ Read `docs/known_issues.md` in full. Its status lines move. Then check:
   current Google Play and App Store requirements and cite the URLs. Don't answer this
   item from memory.
 - **Fresh-eyes pass.** Always, in this mode (SKILL.md §4 step 6).
+
+## §13 Features added in October 2026
+
+None of these had a device run before the 2026-10-20 campaign
+(`docs/qa/full-app-campaign-2026-10-20.md` in the app repo). Where that campaign has run,
+its ledger in `~/qa-runs/2026-10-20-full-app/` is the record.
+
+- **Practice games are never graded.** `practice.tsx` hosts 11 games (`match`, `sprint`,
+  `gap`, `tiles`, `builder`, `dictation`, `listen`, `loop`, `tough`, `aspect`,
+  `prefixes`). `practiceGames.ts` is pure and reads `lapses`/`dueAt` but "never written
+  here". *Look for:* any `recordReview*`, `reviews` insert or FSRS column write reachable
+  from a game, or from the Flow's Practice/Peek sessions. *Oracle:* `reviews` count, plus
+  three cards' FSRS columns, before and after. The `game` param is checked against own
+  keys only (`game=constructor` must fall back to Match board).
+- **Learning modes and Meet first.** Quiz, Listen first, Second chance, Recall it, Word in
+  context, Write it (`learningModes.ts`, `modes.tsx`). Quiz right writes 3 and wrong writes
+  1. A new word is shown, not quizzed, on its first showing (#326). A Second-chance retry
+  comes back 3 cards later and **must not** write a second review. *Look for:* a retry
+  path that calls the review writer. A TTS mode must handle a rejected voice lookup
+  (`getAvailableVoicesAsync`, "Unable to get voices"). `182514ef` fixed it inside
+  `isLanguageAvailable`, and `speak` has its own `try`. `initTts` and `listVoicesFor`
+  (`src/lib/tts.ts`) still reject: census their callers for the same uncaught rejection.
+- **Holiday mode (Pro).** `holiday.ts` (pure) and `holidayStore.ts` (one
+  `user_prefs["flow.holiday"]` row, **cached in memory**). Flow serves nothing, the streak
+  skips the days, and reminders are quiet. *Look for:* (a) a session path (Learn more,
+  Practice, Peek) that serves or **persists** during a holiday; (b) the file comment says
+  device-local and "not synced", but `flow.holiday` is **not** on
+  `IMPORT_PREF_DENYLIST_PREFIXES` (`src/flow/export.ts`), so a backup carries it to
+  another device, and an Import JSON without a JS reload leaves the in-memory cache stale
+  (PLAUSIBLE, unverified on 2026-10-20); (c) day keys computed in local time instead of the
+  logical day (`getLogicalDateKey` with `dayRolloverHour`/timezone).
+- **Evening streak reminder.** `planStreakReminder` mirrors `evaluateStreak`. It returns
+  null when today is done or the streak isn't savable, and skips holiday days. *Look for:*
+  copy that promises a streak the rules would break; scheduling that ignores the holiday.
+- **Dictionary packs from the CDN catalog.** `catalog.ts` applies the AsyncStorage cache,
+  then fetches, and never throws. `packManager.ts` downloads, then checks the size, then
+  SHA-256, then ungzips **the whole pack in memory** (~45 MB peak for es-en), stages it,
+  moves it into place and records the version. A `finally` removes the staging files.
+  *Look for:* a version recorded before the move (a pack that claims to be installed but
+  is missing); a kill between the move and `setInstalledDictVersion` (a file with no version,
+  so a re-download); a new pack big enough to OOM a low-end device.
+- **Course allowance (server-side).** `convex/courseMeter.ts`: 500 distinct words in the
+  first month after signup, then 200 a month (UTC anniversaries), Pro unlimited, and word
+  IDs already used this period are free on retry. It's authorized **before** the local
+  writes. *Look for:* a client path that writes the deck before `authorize` returns; a
+  retry that sends new word IDs for the same words (double charge); entitlement read from
+  anything other than the JWT claim. Device tests spend the account's real allowance, so
+  they need the owner's yes.
+- **ChatGPT deck delivery.** `src/chatgpt/**`; backups rebase ChatGPT media
+  (`rebaseChatgptMedia`) and restore `chatgpt.deck.*` prefs while dropping cursors,
+  receipts and acks. *Look for:* a re-delivery that resets study progress on existing card
+  ids; an offline Receive with no error (the Redmi run saw a spinner for more than 15 s
+  before the fix); a conflict resolution that loses the local edit.
+- **Quick-ball navigation.** An alternative to the dock (`QuickBall.tsx`). *Look for:* the
+  ball covering the grading edges, the caught-up buttons or a pay bar; a ball that eats a
+  card gesture; a position that doesn't persist.
