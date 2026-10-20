@@ -9,6 +9,7 @@ can read the full story.
 1. Decide whether to drive the device at all
 2. Devices, packages and roles
 3. Preflight: toolchain, Metro, the right bundle
+    3a. Linux host
 4. Safety before any input
 5. Gestures
 6. Reading state: DB, logs, counters
@@ -44,8 +45,8 @@ instrument anything.
 | | POCO | Redmi Note 8 Pro |
 |---|---|---|
 | adb serial | `6787ed3b` (`marble`, 1080×2400) | `h6z5mnproz6l4hif` (`begonia`) |
-| default role | test device, disposable data | second device, disposable |
-| note | currently runs a **release** build, so `run-as` is refused | dark theme on this handset; foreground key is `mResumedActivity`, not `topResumedActivity` |
+| default role | test device. "Use poco freely for every test" (owner, 2026-09-28), but the 10-18 runs treated its decks as the owner's study data: budget ratings | **off-limits unless the task names it** (owner: "use poco only do not touch redmi"); other sessions use it |
+| note | as of 2026-10-20 it carries **both** a non-debuggable local release build `cards.voca.app` (no `run-as`) and the debuggable dev client `cards.voca.app.dev` (`run-as` works, ~227 MB DB, 45k cards). Check with `preflight`; this changes | dark theme on this handset; foreground key is `mResumedActivity`, not `topResumedActivity` |
 
 - **Packages:** release `cards.voca.app` (scheme `vocacards`). Dev variant
   `cards.voca.app.dev` (scheme `vocacards-dev`, built with `APP_VARIANT=development`).
@@ -143,6 +144,33 @@ read-only checks below and prints what it finds.
   for release, `vocacards-dev:///<route>` for the dev client. For example
   `vocacards:///settings/backup` goes straight to the backup screen, while the Settings
   rows shift with the Pro banner. Open modals through the real UI, though (§7).
+
+## 3a. Linux host
+
+Since 2026-10 the owner also runs sessions on a Linux box (`/home/rog/...`). Most of §3 and
+§6 is written for the Windows host. On Linux:
+
+| Windows recipe | Linux equivalent |
+|---|---|
+| adb at `/c/Users/Luk/AppData/Local/Android/Sdk/platform-tools` | `/usr/bin/adb` (also `~/Android/Sdk/platform-tools`) |
+| Node 22 via fnm (`AppData/Roaming/fnm/...`) | `export PATH="$HOME/.nvm/versions/node/v22.23.1/bin:$PATH"`; the default `node` is v24, and `better-sqlite3` then throws `NODE_MODULE_VERSION` |
+| `MSYS_NO_PATHCONV=1`, `cygpath`, `cmd /c` | not needed |
+| `adb exec-out … > file` corrupts in Git Bash, so copy through `/data/local/tmp` | `adb exec-out run-as <pkg> cat <f> > out` is **byte-exact**; `device.sh pulldb` uses it on Linux (verified 2026-10-20: `integrity_check` ok on a 225 MB DB) |
+| `netstat -ano` for Metro's bind | `ss -ltn "sport = :<port>"` |
+| `sqlite3` not installed | `~/Android/Sdk/platform-tools/sqlite3` |
+| PowerShell `>` and `Tee-Object` encodings | plain `>` is byte-exact |
+| MAX_PATH in worktrees (memory android-build-long-path) | doesn't apply |
+
+- **No emulator here.** The host has no `/dev/kvm` (checked 2026-10-20), so the AVD
+  (`Resizable_API35`, Google APIs) can't boot accelerated. Mark mode G rows
+  `N/A(no KVM on host)` rather than measuring on a software renderer.
+- **No `cv2` or `ffmpeg`; PIL 10.2 is installed.** Use the raw-frames recipe (memory
+  screenrecord-raw-frames). The 10-18 run's instruments (`rec.sh`, `sheet.py`, `gate.py`,
+  `waitlive.sh`, `pull.sh`) are in `~/qa-runs/2026-10-18-flow-lastcard/`. Copy them into
+  your run folder and fix their hard-coded paths. Don't run them in place.
+- **Run folders** live in `~/qa-runs/<date>-<name>/`.
+- **Cursor runs here too** (`~/.cursor`). A Cursor agent loads this skill from
+  `~/.cursor/skills/vocacards-app-tester` (a symlink), or by reading `SKILL.md` directly.
 
 ## 4. Safety before any input
 

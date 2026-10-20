@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# VocaCards device helper (Git Bash). Read-only except `pulldb`, which writes to the
-# device's /data/local/tmp and removes what it wrote.
+# VocaCards device helper (Git Bash on Windows, or bash on Linux). Read-only except
+# `pulldb`, which on Git Bash writes to the device's /data/local/tmp and removes it.
 #
 #   device.sh fg <serial> [package]            exit 1 unless <package> is in front and awake
 #   device.sh preflight <serial>               packages, debuggability, foreground, Metro reach
 #   device.sh pulldb <serial> [package] [dir]  binary-safe copy of vocacards.db + -wal + -shm
 #
 # package defaults to cards.voca.app (release). The dev variant is cards.voca.app.dev.
-# ponytail: UNTESTED as of 2026-09-25 (written with a no-tests instruction in force).
 # Run `preflight` once against a device before trusting `fg` in a chain.
 set -u
+case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) WIN=1 ;; *) WIN=0 ;; esac
 export MSYS_NO_PATHCONV=1   # otherwise Git Bash rewrites /data/local/tmp into a Windows path
-command -v adb >/dev/null || export PATH="$PATH:/c/Users/Luk/AppData/Local/Android/Sdk/platform-tools"
+command -v adb >/dev/null || export PATH="$PATH:/c/Users/Luk/AppData/Local/Android/Sdk/platform-tools:$HOME/Android/Sdk/platform-tools"
 
 die() { echo "device.sh: $*" >&2; exit 1; }
-sh_() { adb -s "$SERIAL" shell "$@" | tr -d '\r'; }
+sh_() { adb -s "$SERIAL" shell "$@" 2>/dev/null | tr -d '\r'; }
 
 fg() {
   local pkg=${1:-cards.voca.app} act focus wake
@@ -46,23 +46,34 @@ preflight() {
   echo "--- adb reverse:"; adb -s "$SERIAL" reverse --list
   for port in $(adb -s "$SERIAL" reverse --list | grep -oE 'tcp:[0-9]+' | cut -d: -f2 | sort -u); do
     code=$(sh_ "curl -s -m 3 -o /dev/null -w '%{http_code}' http://localhost:$port/status")
-    host=$(netstat -ano 2>/dev/null | grep -E "LISTENING" | grep -E ":$port " | awk '{print $2}' | tr '\n' ' ')
+    if [ "$WIN" = 1 ]; then
+      host=$(netstat -ano 2>/dev/null | grep -E "LISTENING" | grep -E ":$port " | awk '{print $2}' | tr '\n' ' ')
+    else
+      host=$(ss -ltnH "sport = :$port" 2>/dev/null | awk '{print $4}' | tr '\n' ' ')
+    fi
     echo "metro :$port  device-side /status=$code  host binds: ${host:-none}  (want 200 and 0.0.0.0)"
   done
   echo "Reminder: a peer session may be using this device. Check ListAgents before driving it."
+  return 0
 }
 
 pulldb() {
-  local pkg=${1:-cards.voca.app} out=${2:-/c/tmp/vc-$SERIAL} s
+  local pkg=${1:-cards.voca.app} out=${2:-} s
+  [ -n "$out" ] || { [ "$WIN" = 1 ] && out=/c/tmp/vc-$SERIAL || out=${TMPDIR:-/tmp}/vc-$SERIAL; }
   sh_ "run-as $pkg true 2>&1" | grep -q . && die "$pkg is not debuggable: run-as refused (release build?)"
   mkdir -p "$out" || die "cannot create $out"
-  # Never `adb exec-out cat > file` here: in Git Bash it yields a right-sized, corrupt DB.
   for s in "" -wal -shm; do
     # sh_ pipes through tr, so read output rather than exit status; plain adb shell for status.
     if sh_ "run-as $pkg ls files/SQLite/vocacards.db$s 2>&1" | grep -q 'No such file'; then echo "skip: vocacards.db$s absent"; continue; fi
-    adb -s "$SERIAL" shell "run-as $pkg cat files/SQLite/vocacards.db$s > /data/local/tmp/vc.db$s" || die "copy failed: $s"
-    adb -s "$SERIAL" pull "/data/local/tmp/vc.db$s" "$(cygpath -w "$out")\\vocacards.db$s" || die "pull failed: $s"
-    adb -s "$SERIAL" shell "rm -f /data/local/tmp/vc.db$s"
+    if [ "$WIN" = 1 ]; then
+      # Never `adb exec-out cat > file` in Git Bash: it yields a right-sized, corrupt DB.
+      adb -s "$SERIAL" shell "run-as $pkg cat files/SQLite/vocacards.db$s > /data/local/tmp/vc.db$s" || die "copy failed: $s"
+      adb -s "$SERIAL" pull "/data/local/tmp/vc.db$s" "$(cygpath -w "$out")\\vocacards.db$s" || die "pull failed: $s"
+      adb -s "$SERIAL" shell "rm -f /data/local/tmp/vc.db$s"
+    else
+      # Linux: exec-out is byte-exact, and nothing touches /data/local/tmp.
+      adb -s "$SERIAL" exec-out run-as "$pkg" cat "files/SQLite/vocacards.db$s" > "$out/vocacards.db$s" || die "copy failed: $s"
+    fi
   done
   ls -l "$out"
   echo "Query from the repo root with Node 22 + better-sqlite3, or: npx tsx scripts/probe-queue-divergence.ts"

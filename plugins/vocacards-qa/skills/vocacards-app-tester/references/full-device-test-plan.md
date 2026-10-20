@@ -400,6 +400,26 @@ Move the clock through Settings → Additional settings → Date & time, not adb
 | SX2 | Import during an active review session | no "database is locked"; both complete |
 | SX3 | 100 ratings in one session (dev) | DB rows = ratings; no drift in the header |
 
+### NF — Features added in October 2026 (catalog §13)
+
+Atomic steps, oracles and pass conditions for each of these are written out in the app
+repo's `docs/qa/full-app-campaign-2026-10-20.md` (sections DL, CC, PG, HM, NT, QB, ED,
+MC, GPT, PW). Reuse its rows, and record which IDs you ran.
+
+| ID | Test | Pass when |
+|---|---|---|
+| NF1 | Dictionary pack from the CDN catalog: download, airplane during the download, kill during the download, offline catalog | installed with no staging leftovers; a clear error, then a retry works; never "installed" with a missing file; cached catalog used offline |
+| NF2 | Create course (both directions of a reverse pack), arrival in the Library | the tile arrives with no restart; deck and card counts = the DB; Flow header includes it |
+| NF3 | Course allowance on free ☢ (spends real allowance) | refused before any local write at quota; Pro offer shown; a retry isn't charged again |
+| NF4 | Each practice game, one round | completes; **0 `reviews` rows, FSRS unchanged** |
+| NF5 | Learning modes: Quiz, Second chance (a retry 3 cards later, no second review), Meet first, Listen first with no voice | per catalog §13 |
+| NF6 | Holiday mode (Pro): on, sessions while on holiday, reminders, end early, streak across a skipped day (TT), backup with a holiday window | Flow serves nothing and nothing persists; reminders quiet; streak kept |
+| NF7 | Evening streak reminder | scheduled, fires, quiet when today is done or on holiday |
+| NF8 | Quick-ball navigation | every route reachable; never covers grading, caught-up or pay controls |
+| NF9 | Full-screen card editor and Add preview editor | routing by `sourceType`; discard guard; + Meaning and + Tag persist |
+| NF10 | ChatGPT deck delivery: receive, offline error clears, conflict keeps the local edit | as stated, with study progress unchanged (DB) |
+| NF11 | Redesigned paywall from every entry point | renders in 4 themes and at font scale 1.3; closes with no state change |
+
 ### K — Known issues (verdicts)
 
 K1 edit strips pack identity (E2) · K2 LEARN overstatement (F4) · K3 stale snapshot (F12)
@@ -413,7 +433,7 @@ Each gets REPRODUCED / FIXED / NOT TESTABLE, with evidence.
 
 State flows forward, so this order keeps destructive steps late:
 
-U1–U7 → L → F → S → A → E → D → ST → T → NAV → CP → N1 → I (needs `pm clear` for the
+U1–U7 → L → F → S → A → E → D → ST → T → NAV → CP → NF → N1 → I (needs `pm clear` for the
 first import; re-seed after) → B → AC1–AC7 → P → X → PF → TT → FI → SX → K verdicts →
 **AC8 last**.
 

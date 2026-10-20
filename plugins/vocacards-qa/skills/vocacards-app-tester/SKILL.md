@@ -6,9 +6,10 @@ description: >
   vs card writes, marker-gated migrations, backup/restore column round-trips, theme
   tint-vs-accent and style tokens, lazy native requires, Flow queue/FSRS state, stale
   SQLite reads), plans and runs on-device verification over adb under the project's
-  device-safety rules, and audits release readiness. Use it whenever the user asks to
-  test, QA, audit, bug-hunt, "check the app", review before merge or release, verify a
-  fix on the phone, or asks "what could break" in VocaCards, even if they never say
+  device-safety rules, audits release readiness, and writes atomic test plans for
+  another agent (Cursor, Codex) to run. Use it whenever the user asks to test, QA,
+  audit, bug-hunt, "check the app", review before merge or release, verify a fix on the
+  phone, prepare test tasks for an agent, or asks "what could break" in VocaCards, even if they never say
   "QA" or "tester". Not for building features or for React Native questions unrelated
   to this repo.
 ---
@@ -41,8 +42,20 @@ one-file PR gets a one-file review.
 | **E. Full device campaign** | "test everything on the phone", "as comprehensive as possible" | `references/full-device-test-plan.md`, plus everything mode C reads. It's a multi-session campaign held together by a ledger, and it isn't done while any test is still TODO. |
 | **F. Anki bridge and AnkiDroid migration** | "test the Anki add-on / bridge", "moving from AnkiDroid", "Anki sync" | `references/anki-bridge-and-migration-plan.md`, plus everything mode E reads |
 | **G. Emulator campaign** | "test on the emulator", "Android Studio", fix verification across API levels, rows a non-rooted phone can't run | `references/emulator-campaign-plan.md`, plus `device-testing.md` §10d and everything mode E reads |
+| **H. Write a plan for another agent** | "prepare tasks for Cursor / Codex / a testing agent", "write the test plan, someone else runs it" | `references/atomic-plan-template.md`, plus the prior run folders in `~/qa-runs/` and the mode the plan targets |
 
-Modes combine. A review of a gesture fix is A, then C.
+Modes combine. A review of a gesture fix is A, then C. A plan written for another agent
+(H) still follows every rule of the mode it targets. It just hands the execution over.
+
+**Outside Claude Code** (Cursor, Codex, Android Studio's agent window), some tools named
+here don't exist. Map them:
+- `Skill`: read this file by path, or use the host's skill list (`~/.cursor/skills/`
+  symlinks this directory).
+- `Agent` (the fresh-eyes pass in §4.6): use the host's subagent, if it has one. If it
+  doesn't, write the pass as a separate prompt the owner can run in a new chat, and mark
+  the pass `NOT RUN` in the report rather than simulating it in the same context.
+- `ListAgents` (peer check in §5): ask the owner whether another session is using the
+  device.
 
 ## 2. Ground rules, and why each exists
 
@@ -128,8 +141,10 @@ test, a query against a pulled or fixture DB (`e2e/fixtures/vocacards.db`), or
    branch commits, working tree, or both. Map every changed path to catalog sections
    with the path index.
 2. **Automated checks.** Record each tool's own totals, not your recount.
-   - `npm test`. Agent shells don't load fnm, so put Node 22 first:
-     `export PATH="$HOME/AppData/Roaming/fnm/node-versions/v22.23.1/installation:$PATH"`.
+   - `npm test`. Agent shells don't load the Node manager, so put Node 22 first. On
+     Windows: `export PATH="$HOME/AppData/Roaming/fnm/node-versions/v22.23.1/installation:$PATH"`.
+     On Linux: `export PATH="$HOME/.nvm/versions/node/v22.23.1/bin:$PATH"`
+     (`device-testing.md` §3a).
      A `NODE_MODULE_VERSION` error means the wrong Node, not a regression. On Windows,
      five `src/lib/dict/*` tests fail with an SHA-256 mismatch caused by autocrlf. That
      failure is known.
@@ -163,8 +178,10 @@ Read `references/device-testing.md` first. It has the setup, the recipes and the
 modes. The points below are repeated here because skipping any one of them has cost a
 real incident or a wasted afternoon.
 
-- **Device roles.** The POCO `6787ed3b` holds disposable test data by default. The Redmi
-  `h6z5mnproz6l4hif` is the second device. When the task prompt assigns roles (the
+- **Device roles.** The POCO `6787ed3b` is the test device. Its dev client holds the
+  owner's study decks, so budget Flow ratings (the 10-18 runs capped them at 150). The
+  Redmi `h6z5mnproz6l4hif` is off-limits unless the task names it, because other work
+  uses it. When the task prompt assigns roles (the
   sync/backup campaigns mark the POCO PROTECTED), the prompt wins. Before editing code a
   background trigger can run (backup, rotation, sync), run
   `adb -s <protected> shell am force-stop cards.voca.app` and tell the user you left it
@@ -246,6 +263,7 @@ false-positive idioms whose "fix" would add a bug.
 
 ## 8. Keeping this skill true
 
-The catalog summarises CLAUDE.md, the docs and the memory as of 2026-09-25. Where they
+The catalog summarises CLAUDE.md, the docs and the memory as of 2026-10-20
+(`master @ b1cc09ab`). Where they
 disagree with it, they win. If an entry has gone stale (a symbol renamed, an open item
 closed), say so in the report and offer to update the catalog.
