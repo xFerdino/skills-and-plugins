@@ -51,8 +51,13 @@ and the guess is usually the cheap version of the test.
   in 10 runs" is.
 - **Every row names its n.** Use n ≥ 5 for flicker or race rows, ≥ 7 for timings, and n = 3
   where a run costs real ratings.
-- **Fix-verification rows reproduce the original trigger**, cite the fix commit, and run
-  on the release build (dev-client-only caps at PLAUSIBLE).
+- **Fix-verification rows reproduce the original trigger**, cite the fix commit **and the
+  files it changed**, and run on the release build (dev-client-only caps at PLAUSIBLE).
+  The pass condition must not ask for more than the fix changed. If the defect also lives
+  somewhere the fix didn't touch, that's a separate row.
+- **The ratings log starts at preflight and covers every grade,** and the review
+  reconciliation runs **before** wrap-up deletes test cards (deleting a card deletes its
+  reviews).
 - **Destructive or spending rows are ☢**: `pm clear`, restores, kills during a write, clock
   moves, server-side allowance or quota spends, anything that changes account state. Each
   one needs the owner's yes in chat, per row.

@@ -114,6 +114,32 @@ it. That happened once and read as "restore removed the marker".
 So: no certification wording ("release ready", "certified") in a campaign report. The
 verdict is the ledger; ship decisions are the owner's.
 
+**Lessons from the full-app campaign (2026-10-20, Cursor agent, 160 rows).** Its review
+reconciliation (W3) failed, and the review of the run found three ways the ledger misled:
+- **39 grades were made but never logged.** Grading started before the agent's habit of
+  logging every rating did, so a 111-row delta against 76 logged rows was unexplainable.
+  Log every grade from P9 onward, scripted or by hand, including the ones that only move
+  you toward a test state. Ask the owner to note any grades they make while the run is
+  live.
+- **Reconcile by exact timestamp, not by bucket.** The report described "four
+  timestamps" that were actually four hours. Then six rows for one word looked like one
+  card graded six times; they were six sibling cards of one Anki note. Join `reviews` to
+  `cards` on `card_id`, and compare `id`, `reviewed_at` and `source_card_ord` before you
+  call anything a duplicate.
+- **Deleting a card deletes its reviews** (`ON DELETE CASCADE`). Take the W3 count, or a
+  per-row snapshot, **before** wrap-up deletes the run's test cards. Otherwise every graded
+  test card turns into a "missing" review.
+- **A fix-verification row can't ask for more than the fix changed.** FV7 expected the
+  filter panel to hide a lone subdeck, but the fix (`f90c9d13`) only ever touched the deck
+  inspector. List the fix commit's changed files in the row, and file the gap as its own
+  finding.
+- **A nested scroller swallows a "does the page scroll" swipe.** In CC3, a swipe inside the
+  topic list (its own `ScrollView`) scrolled the list, not the page. Swipe on a region that
+  doesn't scroll on its own, and check that the swipe's start point lands there.
+- **Sign-in state routes the rows.** A signed-out dev client redirects Create course to
+  Sign in, and the ChatGPT editor fails without a user. Record each package's sign-in state
+  in preflight, and pre-route the rows that need sign-in.
+
 **Lessons from the second campaign (2026-09-25/26).** It ran 10 hours with 0 TODO, but
 two headline findings didn't survive review:
 - **A blocker on one build isn't a blocker for the test.** 19 rows were BLOCKED because
